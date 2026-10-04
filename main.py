@@ -382,6 +382,12 @@ def main(page: ft.Page):
     def set_hotkey_pause(e=None):
         key = lbl_pause.value
         if not key or "Presiona" in key or "Clic" in key: return
+        if key == lbl_next.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
+        if key == lbl_prev.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} en uso: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
@@ -393,6 +399,13 @@ def main(page: ft.Page):
     def set_hotkey_next(e=None):
         key = lbl_next.value
         if not key or "Presiona" in key or "Clic" in key: return
+        # Check duplicate across our own hotkeys
+        if key == lbl_prev.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
+        if key == lbl_pause.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
@@ -408,6 +421,12 @@ def main(page: ft.Page):
     def set_hotkey_prev(e=None):
         key = lbl_prev.value
         if not key or "Presiona" in key or "Clic" in key: return
+        if key == lbl_next.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
+        if key == lbl_pause.value:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
+            page.snack_bar.open = True; page.update(); return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
