@@ -7,6 +7,7 @@ from core.dce_audio_core import search_youtube, download_and_convert
 from core.l4d2_manager import L4D2Manager
 from core.hotkeys import hotkey_manager
 from core.playlist_manager import get_playlist, add_to_playlist, remove_from_playlist, import_local_file
+from core.playback_manager import PlaybackManager
 
 CONFIG_FILE = os.path.abspath("hotkeys_config.json")
 
@@ -122,6 +123,63 @@ def main(page: ft.Page):
         )
     )
 
+    playback = PlaybackManager(l4d2)
+
+    # --- BARRA DE CONTROL Y REPRODUCCIÓN (PLAY / PAUSA / REANUDAR / REINICIAR) ---
+    lbl_now_playing_title = ft.Text(
+        playback.current_title,
+        weight=ft.FontWeight.BOLD,
+        color=ft.Colors.WHITE,
+        max_lines=1,
+        overflow=ft.TextOverflow.ELLIPSIS
+    )
+    lbl_now_playing_time = ft.Text("⏸️ Pausado (00:00 / 00:00)", color=ft.Colors.WHITE_54, size=12)
+    btn_toggle_play_ui = ft.IconButton(
+        icon=ft.Icons.PLAY_ARROW_ROUNDED,
+        icon_color="#ffaa00",
+        tooltip="Pausar / Continuar (o presiona tu hotkey en juego)",
+        on_click=lambda e: (playback.toggle_pause_resume(check_game_running=False), update_playback_ui())
+    )
+    btn_restart_ui = ft.IconButton(
+        icon=ft.Icons.REPLAY_ROUNDED,
+        icon_color=ft.Colors.WHITE_54,
+        tooltip="Reiniciar canción desde el inicio (0:00)",
+        on_click=lambda e: (playback.restart_track(), show_notify("🔄 Canción reiniciada a 0:00"), update_playback_ui())
+    )
+
+    def update_playback_ui(status=None):
+        if not status:
+            status = playback.get_status()
+        lbl_now_playing_title.value = status["title"]
+        icon_stat = "▶️" if status["is_playing"] else "⏸️"
+        txt_stat = "En reproducción" if status["is_playing"] else "Pausado"
+        lbl_now_playing_time.value = f"{icon_stat} {txt_stat} ({status['current_str']} / {status['total_str']})"
+        lbl_now_playing_time.color = ft.Colors.GREEN_400 if status["is_playing"] else ft.Colors.WHITE_54
+        btn_toggle_play_ui.icon = ft.Icons.PAUSE_ROUNDED if status["is_playing"] else ft.Icons.PLAY_ARROW_ROUNDED
+        btn_toggle_play_ui.icon_color = ft.Colors.GREEN_400 if status["is_playing"] else "#ffaa00"
+        try:
+            page.update()
+        except Exception:
+            pass
+
+    playback.on_state_change = lambda st: update_playback_ui(st)
+
+    playback_bar = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.MUSIC_NOTE, color="#ffaa00", size=24),
+            ft.Column([
+                lbl_now_playing_title,
+                lbl_now_playing_time
+            ], expand=True, spacing=2),
+            btn_toggle_play_ui,
+            btn_restart_ui
+        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN, vertical_alignment=ft.CrossAxisAlignment.CENTER),
+        padding=ft.Padding.symmetric(horizontal=14, vertical=6),
+        bgcolor="#161616",
+        border_radius=8,
+        border=ft.Border.all(1, "#262626")
+    )
+
     # --- PESTAÑA 1: BUSCADOR ---
     search_state = {"query": "", "loaded_count": 0, "is_loading_more": False, "has_more": True, "is_direct_link": False}
     search_input = ft.TextField(hint_text="Escribe el nombre o pega enlace de YouTube...", expand=True, bgcolor="#101010", on_submit=lambda e: page.run_task(perform_search, e))
@@ -161,9 +219,10 @@ def main(page: ft.Page):
             os.makedirs(".downloads", exist_ok=True)
             out_wav = os.path.abspath(os.path.join(".downloads", "voice_input_temp.wav"))
             await asyncio.to_thread(download_and_convert, url, out_wav)
-            success, msg = l4d2.set_voice_input(out_wav)
-            status_text.value = f"✅ {msg}"
+            success, msg = playback.load_track(out_wav, title=title)
+            status_text.value = f"✅ Inyectado en L4D2: {title}"
             show_notify(f"✅ Inyectado en L4D2: {title}")
+            update_playback_ui()
         except Exception as err:
             status_text.value = f"❌ Error: {err}"
             show_notify(f"❌ Error al inyectar: {err}", is_error=True)
@@ -243,16 +302,18 @@ def main(page: ft.Page):
         if not data: return
         current_song_index[0] = (current_song_index[0] + 1) % len(data)
         song = data[current_song_index[0]]
-        l4d2.set_voice_input(song['file'])
+        playback.load_track(song['file'], title=song['title'])
         print(f"Modo Ninja: Siguiente -> {song['title']}")
+        update_playback_ui()
 
     def play_prev_song():
         data = get_playlist()
         if not data: return
         current_song_index[0] = (current_song_index[0] - 1) % len(data)
         song = data[current_song_index[0]]
-        l4d2.set_voice_input(song['file'])
+        playback.load_track(song['file'], title=song['title'])
         print(f"Modo Ninja: Anterior -> {song['title']}")
+        update_playback_ui()
 
     def inject_playlist_song(song):
         data = get_playlist()
@@ -260,9 +321,9 @@ def main(page: ft.Page):
             if s['id'] == song['id']:
                 current_song_index[0] = i
                 break
-        success, msg = l4d2.set_voice_input(song['file'])
+        success, msg = playback.load_track(song['file'], title=song['title'])
         show_notify(f"✅ Inyectado en L4D2: {song['title']}" if success else f"❌ Error: {msg}", is_error=not success)
-        page.update()
+        update_playback_ui()
 
     def delete_playlist_song(song_id):
         remove_from_playlist(song_id)
@@ -314,7 +375,13 @@ def main(page: ft.Page):
     saved_prev = saved_cfg.get("prev") or ""
     saved_next = saved_cfg.get("next") or ""
 
+    def on_hotkey_pause():
+        playback.toggle_pause_resume()
+        update_playback_ui()
+
     # Pre-registrar hotkeys guardadas al iniciar
+    if saved_pause:
+        hotkey_manager.set_hotkey(saved_pause, on_hotkey_pause)
     if saved_prev:
         hotkey_manager.set_hotkey(saved_prev, play_prev_song)
     if saved_next:
@@ -466,6 +533,7 @@ def main(page: ft.Page):
         # Aplicar CFG en L4D2 con la tecla de pausa
         if pause_val:
             l4d2.generate_cfg(pause_val)
+            hotkey_manager.set_hotkey(pause_val, on_hotkey_pause)
         
         # Registrar listeners de hotkeys
         if prev_val:
@@ -577,10 +645,11 @@ def main(page: ft.Page):
         ], expand=True)
     )
 
-    page.add(ft.Column([top_bar, tabs_layout], expand=True))
+    page.add(ft.Column([top_bar, playback_bar, tabs_layout], expand=True))
     
     check_l4d2_status()
     load_playlist_view()
+    update_playback_ui()
     page.window.visible = True
     page.update()
 

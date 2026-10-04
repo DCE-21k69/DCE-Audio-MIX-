@@ -67,6 +67,7 @@ snd_duckerthreshold 1.0
 alias dce_play "voice_inputfromfile 1; voice_loopback 1; +voicerecord; alias dce_toggle dce_stop"
 alias dce_stop "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias dce_toggle dce_play"
 alias dce_toggle "dce_play"
+alias dce_reset "dce_stop; alias dce_toggle dce_play"
 bind "{clean_key}" "dce_toggle"
 echo "=========================================="
 echo "DCE Audio MIX cargado con exito!"
