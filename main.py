@@ -279,7 +279,7 @@ def main(page: ft.Page):
             hotkey_next.value = None
             page.update()
             return
-        hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
+        hotkey_manager.set_hotkey(key, play_next_song)
         # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
@@ -295,7 +295,7 @@ def main(page: ft.Page):
             hotkey_prev.value = None
             page.update()
             return
-        hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
+        hotkey_manager.set_hotkey(key, play_prev_song)
         # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
@@ -337,21 +337,25 @@ def main(page: ft.Page):
         target = recording_state["active"]
         l4d2_key = flet_key_to_l4d2(e.key)
         
+        def update_label(lbl, prev_key):
+            same = (lbl.color == ft.Colors.WHITE_38 and lbl.value == l4d2_key)
+            lbl.value = l4d2_key
+            lbl.color = ft.Colors.WHITE_38 if same else ft.Colors.GREEN_400
+            lbl.update()
+            return same
+
         if target == "pause":
-            lbl_pause.value = l4d2_key
-            lbl_pause.color = ft.Colors.GREEN_400
-            lbl_pause.update()
+            already = update_label(lbl_pause, lbl_pause.value)
         elif target == "prev":
-            lbl_prev.value = l4d2_key
-            lbl_prev.color = ft.Colors.GREEN_400
-            lbl_prev.update()
+            already = update_label(lbl_prev, lbl_prev.value)
         elif target == "next":
-            lbl_next.value = l4d2_key
-            lbl_next.color = ft.Colors.GREEN_400
-            lbl_next.update()
+            already = update_label(lbl_next, lbl_next.value)
+        else:
+            already = False
 
         recording_state["active"] = None
-        set_aplicar_btn_state(True)
+        if not already:
+            set_aplicar_btn_state(True)
 
         page.update()
         
@@ -417,7 +421,7 @@ def main(page: ft.Page):
             hotkey_next_btn.text = "Clic para asignar..."
             page.update()
             return
-        hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
+        hotkey_manager.set_hotkey(key, play_next_song)
         # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
@@ -439,7 +443,7 @@ def main(page: ft.Page):
             hotkey_prev_btn.text = "Clic para asignar..."
             page.update()
             return
-        hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
+        hotkey_manager.set_hotkey(key, play_prev_song)
         # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
