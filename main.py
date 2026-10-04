@@ -315,11 +315,20 @@ def main(page: ft.Page):
     hotkey_next = ft.TextField(label="Tecla Siguiente", hint_text="Ej: F9", width=180, on_submit=set_hotkey_next)
     hotkey_prev = ft.TextField(label="Tecla Anterior", hint_text="Ej: F10", width=180, on_submit=set_hotkey_prev)
     
+
+    def aplicar_hotkeys(e):
+        if hotkey_pause.value: set_hotkey_pause(e)
+        if hotkey_prev.value: set_hotkey_prev(e)
+        if hotkey_next.value: set_hotkey_next(e)
+
+    btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400)
+
     ninja_panel = ft.Container(
         content=ft.Column([
             ft.Text("🥷 Modo Ninja (Escribe la tecla y presiona Enter)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
             ft.Text("Cambia de canción sin minimizar el juego. Verifica que la tecla no esté usada en tu CFG.", size=12, color=ft.Colors.WHITE_54),
-            ft.Row([hotkey_pause, hotkey_prev, hotkey_next])
+            ft.Row([hotkey_pause, hotkey_prev, hotkey_next]),
+            ft.Row([btn_aplicar_hotkeys], alignment=ft.MainAxisAlignment.END)
         ]),
         bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
     )
