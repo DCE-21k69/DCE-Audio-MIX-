@@ -3,59 +3,77 @@ from pynput import keyboard
 
 
 class HotkeyManager:
+    """
+    Single persistent keyboard listener. Hotkeys are stored in a dict and
+    checked on every key press - no restart needed, no X11 display_record crash.
+    """
+
     def __init__(self):
         self._lock = threading.Lock()
-        self.listener = None
-        self.hotkeys = {}
+        self._hotkeys = {}   # {normalized_key_str: callback}
+        self._listener = None
+        self._start()
+
+    # ------------------------------------------------------------------
+    # Public API
+    # ------------------------------------------------------------------
 
     def set_hotkey(self, key_str, callback):
+        """Add or replace a hotkey (thread-safe)."""
+        norm = self._normalize(key_str)
         with self._lock:
-            self.hotkeys[key_str] = callback
-        self._restart_listener()
+            self._hotkeys[norm] = callback
 
     def remove_hotkey(self, key_str):
+        """Remove a hotkey (thread-safe)."""
+        norm = self._normalize(key_str)
         with self._lock:
-            if key_str in self.hotkeys:
-                del self.hotkeys[key_str]
-        self._restart_listener()
-
-    def _restart_listener(self):
-        # Stop old listener in a safe way
-        old = self.listener
-        self.listener = None
-        if old is not None:
-            try:
-                # Use a thread to avoid blocking the calling thread
-                t = threading.Thread(target=old.stop, daemon=True)
-                t.start()
-                t.join(timeout=1.0)  # Max 1s to stop old listener
-            except Exception:
-                pass
-
-        with self._lock:
-            hotkeys_copy = dict(self.hotkeys)
-
-        if not hotkeys_copy:
-            return
-
-        try:
-            new_listener = keyboard.GlobalHotKeys(hotkeys_copy)
-            new_listener.daemon = True
-            self.listener = new_listener
-            new_listener.start()
-        except Exception as e:
-            print(f"Error iniciando GlobalHotKeys: {e}")
+            self._hotkeys.pop(norm, None)
 
     def stop(self):
-        old = self.listener
-        self.listener = None
-        if old is not None:
+        """Stop the listener permanently (call on app exit)."""
+        if self._listener is not None:
+            self._listener.stop()
+            self._listener = None
+
+    # ------------------------------------------------------------------
+    # Internal
+    # ------------------------------------------------------------------
+
+    def _normalize(self, key_str: str) -> str:
+        """Turn a pynput key string into a consistent lowercase form."""
+        # pynput represents special keys like <f9>, <left>, +, etc.
+        return key_str.lower().strip()
+
+    def _key_to_str(self, key) -> str:
+        """Convert a pynput Key object / KeyCode to our normalized string."""
+        try:
+            # Special keys: Key.f9 -> '<f9>', Key.left -> '<left>'
+            name = key.name  # e.g. 'f9', 'left', 'space'
+            return f"<{name}>"
+        except AttributeError:
+            # Regular character keys: KeyCode(char='a') -> 'a'
             try:
-                t = threading.Thread(target=old.stop, daemon=True)
-                t.start()
-                t.join(timeout=1.0)
-            except Exception:
-                pass
+                return key.char.lower() if key.char else ""
+            except AttributeError:
+                return ""
+
+    def _on_press(self, key):
+        key_str = self._key_to_str(key)
+        if not key_str:
+            return
+        with self._lock:
+            cb = self._hotkeys.get(key_str)
+        if cb is not None:
+            threading.Thread(target=cb, daemon=True).start()
+
+    def _start(self):
+        try:
+            self._listener = keyboard.Listener(on_press=self._on_press)
+            self._listener.daemon = True
+            self._listener.start()
+        except Exception as e:
+            print(f"[HotkeyManager] Error starting listener: {e}")
 
 
 hotkey_manager = HotkeyManager()

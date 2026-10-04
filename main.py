@@ -280,6 +280,7 @@ def main(page: ft.Page):
             page.update()
             return
         hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
+        # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
@@ -295,6 +296,7 @@ def main(page: ft.Page):
             page.update()
             return
         hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
+        # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
@@ -379,33 +381,34 @@ def main(page: ft.Page):
             return f"<{k}>"
         return k
 
-    def set_hotkey_pause(e=None):
+    def set_hotkey_pause(e=None):  # returns False if validation fails
         key = lbl_pause.value
         if not key or "Presiona" in key or "Clic" in key: return
         if key == lbl_next.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         if key == lbl_prev.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} en uso: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         success, msg = l4d2.generate_cfg(key)
+        # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Pausa L4D2 asignada a {key} (Usa 'exec dce_audio.cfg')"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True; page.update()
 
-    def set_hotkey_next(e=None):
+    def set_hotkey_next(e=None):  # returns False if validation fails
         key = lbl_next.value
         if not key or "Presiona" in key or "Clic" in key: return
         # Check duplicate across our own hotkeys
         if key == lbl_prev.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         if key == lbl_pause.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
@@ -414,19 +417,20 @@ def main(page: ft.Page):
             page.update()
             return
         hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
+        # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
 
-    def set_hotkey_prev(e=None):
+    def set_hotkey_prev(e=None):  # returns False if validation fails
         key = lbl_prev.value
         if not key or "Presiona" in key or "Clic" in key: return
         if key == lbl_next.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         if key == lbl_pause.value:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return
+            page.snack_bar.open = True; page.update(); return False
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
@@ -435,6 +439,7 @@ def main(page: ft.Page):
             page.update()
             return
         hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
+        # success
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
@@ -464,10 +469,26 @@ def main(page: ft.Page):
     btn_prev_rec = ft.OutlinedButton(content=ft.Text("⏮ Anterior"), on_click=lambda e: start_record(e, "prev"))
     btn_next_rec = ft.OutlinedButton(content=ft.Text("⏭ Siguiente"), on_click=lambda e: start_record(e, "next"))
 
+    def mark_applied(lbl, btn):
+        lbl.color = ft.Colors.WHITE_38
+        btn.disabled = True
+        btn.update()
+        lbl.update()
+
     def aplicar_hotkeys(e):
-        if lbl_pause.color != ft.Colors.WHITE_54 and "Presiona" not in lbl_pause.value: set_hotkey_pause()
-        if lbl_prev.color != ft.Colors.WHITE_54 and "Presiona" not in lbl_prev.value: set_hotkey_prev()
-        if lbl_next.color != ft.Colors.WHITE_54 and "Presiona" not in lbl_next.value: set_hotkey_next()
+        applied = False
+        if lbl_pause.value not in ("Clic para asignar...",) and "Presiona" not in lbl_pause.value and lbl_pause.color != ft.Colors.WHITE_38:
+            if set_hotkey_pause() is not False:
+                mark_applied(lbl_pause, btn_pause_rec)
+                applied = True
+        if lbl_prev.value not in ("Clic para asignar...",) and "Presiona" not in lbl_prev.value and lbl_prev.color != ft.Colors.WHITE_38:
+            if set_hotkey_prev() is not False:
+                mark_applied(lbl_prev, btn_prev_rec)
+                applied = True
+        if lbl_next.value not in ("Clic para asignar...",) and "Presiona" not in lbl_next.value and lbl_next.color != ft.Colors.WHITE_38:
+            if set_hotkey_next() is not False:
+                mark_applied(lbl_next, btn_next_rec)
+                applied = True
 
     btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400)
 
