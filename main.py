@@ -46,12 +46,12 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         check_l4d2_status()
 
-    btn_connect = ft.Button("Conectar / Inyectar CFG", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
+    btn_connect = ft.Button("Conectar", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
 
     top_bar = ft.Container(
         content=ft.Row([
             ft.Image(src=icon_path, width=40, height=40) if os.path.exists(icon_path) else ft.Icon(ft.Icons.MUSIC_NOTE, color="#ffaa00"),
-            ft.Text("DCE AUDIO MIX", size=22, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            ft.Text("DCE AUDIO MIX", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
             ft.Container(expand=True),
             l4d2_status_icon,
             l4d2_status_text,
