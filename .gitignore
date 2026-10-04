@@ -7,3 +7,8 @@ dist/
 .flatpak-builder/
 *.flatpak
 *.exe
+.downloads/
+.playlist/
+*.wav
+*.mp3
+left4dead2/
