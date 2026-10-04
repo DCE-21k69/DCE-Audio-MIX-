@@ -4,6 +4,7 @@ import asyncio
 import webbrowser
 from core.dce_audio_core import search_youtube, download_and_convert
 from core.l4d2_manager import L4D2Manager
+from core.hotkeys import hotkey_manager
 from core.playlist_manager import get_playlist, add_to_playlist, remove_from_playlist, import_local_file
 
 def main(page: ft.Page):
@@ -53,7 +54,7 @@ def main(page: ft.Page):
     # Botones de ventana
 
     async def do_close(*args):
-        await page.window.close()
+        hotkey_manager.stop(); await page.window.close()
         
     async def do_minimize(*args):
         page.window.minimized = True
@@ -191,6 +192,7 @@ def main(page: ft.Page):
 
     # --- PESTAÑA 2: PLAYLIST ---
     playlist_list = ft.ListView(expand=True, spacing=10)
+    current_song_index = [0] # List to act as mutable reference
     
     def load_playlist_view():
         playlist_list.controls.clear()
@@ -218,7 +220,29 @@ def main(page: ft.Page):
             playlist_list.controls.append(card)
         page.update()
 
+
+    def play_next_song():
+        data = get_playlist()
+        if not data: return
+        current_song_index[0] = (current_song_index[0] + 1) % len(data)
+        song = data[current_song_index[0]]
+        l4d2.set_voice_input(song['file'])
+        print(f"Modo Ninja: Siguiente -> {song['title']}")
+
+    def play_prev_song():
+        data = get_playlist()
+        if not data: return
+        current_song_index[0] = (current_song_index[0] - 1) % len(data)
+        song = data[current_song_index[0]]
+        l4d2.set_voice_input(song['file'])
+        print(f"Modo Ninja: Anterior -> {song['title']}")
+
     def inject_playlist_song(song):
+        data = get_playlist()
+        for i, s in enumerate(data):
+            if s['id'] == song['id']:
+                current_song_index[0] = i
+                break
         success, msg = l4d2.set_voice_input(song['file'])
         page.snack_bar = ft.SnackBar(ft.Text(msg), bgcolor=ft.Colors.GREEN_800 if success else ft.Colors.RED_800)
         page.snack_bar.open = True
@@ -243,7 +267,53 @@ def main(page: ft.Page):
 
     page.services.append(file_picker)
 
+
+    # --- MODO NINJA ---
+    def set_hotkey_next(e):
+        key = hotkey_next.value
+        if not key: return
+        bound = l4d2.get_bound_keys()
+        if key.lower() in bound:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
+            page.snack_bar.open = True
+            hotkey_next.value = None
+            page.update()
+            return
+        hotkey_manager.set_hotkey(f"<{key.lower()}>", play_next_song)
+        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
+        page.snack_bar.open = True
+        page.update()
+
+    def set_hotkey_prev(e):
+        key = hotkey_prev.value
+        if not key: return
+        bound = l4d2.get_bound_keys()
+        if key.lower() in bound:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
+            page.snack_bar.open = True
+            hotkey_prev.value = None
+            page.update()
+            return
+        hotkey_manager.set_hotkey(f"<{key.lower()}>", play_prev_song)
+        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
+        page.snack_bar.open = True
+        page.update()
+
+    keys_opts = [ft.dropdown.Option(f"F{i}") for i in range(5, 13)]
+    hotkey_next = ft.Dropdown(label="Tecla Siguiente Canción", options=keys_opts, width=220, on_change=set_hotkey_next)
+    hotkey_prev = ft.Dropdown(label="Tecla Anterior Canción", options=keys_opts, width=220, on_change=set_hotkey_prev)
+    
+    ninja_panel = ft.Container(
+        content=ft.Column([
+            ft.Text("🥷 Modo Ninja (Global Hotkeys)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            ft.Text("Cambia de canción sin minimizar el juego. Verifica que la tecla no esté usada en tu CFG.", size=12, color=ft.Colors.WHITE_54),
+            ft.Row([hotkey_prev, hotkey_next])
+        ]),
+        bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
+    )
+
     playlist_column = ft.Column([
+        ninja_panel,
         ft.Row([
             ft.Text("Canciones Guardadas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
             ft.Container(expand=True),

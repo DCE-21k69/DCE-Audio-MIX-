@@ -1,3 +1,4 @@
+import re
 import os
 import psutil
 import platform
@@ -80,3 +81,42 @@ echo "DCE Audio Mix cargado con exito. Presiona {hotkey} para reproducir."
             return True, "Audio inyectado en L4D2."
         except Exception as e:
             return False, f"Error inyectando audio: {e}"
+
+    def get_bound_keys(self):
+        bound_keys = {}
+        if not self.game_path:
+            return bound_keys
+        cfg_dir = os.path.join(self.game_path, "left4dead2", "cfg")
+        if not os.path.exists(cfg_dir):
+            return bound_keys
+            
+        cfg_files = ["config.cfg", "autoexec.cfg"]
+        
+        # Opcional: escanear todos los .cfg
+        for file in os.listdir(cfg_dir):
+            if file.endswith(".cfg") and file not in cfg_files:
+                cfg_files.append(file)
+                
+        # Regex para atrapar: bind "letra" "comando" o bind letra "comando"
+        # Ignoramos líneas comentadas
+        bind_pattern = re.compile(r'^\s*bind\s+"?([^"\s]+)"?\s+"([^"]+)"', re.IGNORECASE)
+        
+        for cfg_file in cfg_files:
+            cfg_path = os.path.join(cfg_dir, cfg_file)
+            if os.path.exists(cfg_path):
+                try:
+                    with open(cfg_path, "r", errors="ignore") as f:
+                        for line in f:
+                            if line.strip().startswith("//"): continue
+                            match = bind_pattern.search(line)
+                            if match:
+                                key = match.group(1).lower()
+                                command = match.group(2)
+                                # Si no es nuestro propio bind
+                                if "dce_toggle" not in command:
+                                    if key not in bound_keys:
+                                        bound_keys[key] = []
+                                    bound_keys[key].append(f"{cfg_file}: {command}")
+                except Exception:
+                    pass
+        return bound_keys
