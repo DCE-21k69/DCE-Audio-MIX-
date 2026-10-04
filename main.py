@@ -1,4 +1,5 @@
 import flet as ft
+import webbrowser
 import os
 import asyncio
 from core.dce_audio_core import search_youtube, download_and_convert
@@ -55,7 +56,7 @@ def main(page: ft.Page):
             icon=ft.Icons.OPEN_IN_BROWSER,
             tooltip="Abrir en YouTube",
             icon_color=ft.Colors.WHITE_54,
-            on_click=lambda e: page.launch_url(item['url'])
+            on_click=lambda e: webbrowser.open(item['url'])
         )
 
         # Agrupamos botones
