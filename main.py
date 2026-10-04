@@ -12,6 +12,7 @@ def main(page: ft.Page):
     page.bgcolor = "#080808"
     page.window.width = 950
     page.window.height = 750
+    page.window.frameless = True
 
     icon_path = os.path.abspath(os.path.join("assets", "logoapp.png"))
     if os.path.exists(icon_path):
@@ -48,18 +49,28 @@ def main(page: ft.Page):
 
     btn_connect = ft.Button("Conectar", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
 
-    top_bar = ft.Container(
-        content=ft.Row([
-            ft.Image(src=icon_path, width=40, height=40) if os.path.exists(icon_path) else ft.Icon(ft.Icons.MUSIC_NOTE, color="#ffaa00"),
-            ft.Text("DCE AUDIO MIX", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
-            ft.Container(expand=True),
-            l4d2_status_icon,
-            l4d2_status_text,
-            btn_connect
-        ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
-        padding=10,
-        bgcolor="#121212",
-        border_radius=8
+
+    # Botones de ventana
+    btn_min = ft.IconButton(ft.Icons.MINIMIZE, on_click=lambda _: setattr(page.window, "minimized", True) or page.update(), icon_color=ft.Colors.WHITE54)
+    btn_close = ft.IconButton(ft.Icons.CLOSE, on_click=lambda _: page.window.destroy(), icon_color=ft.Colors.RED_400)
+
+    top_bar = ft.WindowDragArea(
+        content=ft.Container(
+            content=ft.Row([
+                ft.Image(src=icon_path, width=40, height=40) if os.path.exists(icon_path) else ft.Icon(ft.Icons.MUSIC_NOTE, color="#ffaa00"),
+                ft.Text("DCE AUDIO MIX", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+                ft.Container(expand=True),
+                l4d2_status_icon,
+                l4d2_status_text,
+                btn_connect,
+                ft.Container(width=10),
+                btn_min,
+                btn_close
+            ], alignment=ft.MainAxisAlignment.SPACE_BETWEEN),
+            padding=10,
+            bgcolor="#121212",
+            border_radius=8
+        )
     )
 
     # --- PESTAÑA 1: BUSCADOR ---
