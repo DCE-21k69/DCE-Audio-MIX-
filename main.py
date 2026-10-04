@@ -1,6 +1,6 @@
 import flet as ft
 import os
-import threading
+import asyncio
 from core.dce_audio_core import search_youtube, download_and_convert
 
 def main(page: ft.Page):
@@ -24,34 +24,6 @@ def main(page: ft.Page):
     status_text = ft.Text("", color="#ffaa00", size=14)
     loading_ring = ft.ProgressRing(visible=False, width=20, height=20, color="#ffaa00")
 
-    def perform_search(e):
-        query = search_input.value.strip()
-        if not query:
-            return
-
-        results_list.controls.clear()
-        loading_ring.visible = True
-        status_text.value = "Buscando en YouTube..."
-        page.update()
-
-        def background_search():
-            try:
-                results = search_youtube(query, max_results=6)
-                loading_ring.visible = False
-                
-                if not results:
-                    status_text.value = "No se encontraron resultados."
-                else:
-                    status_text.value = f"Se encontraron {len(results)} resultados:"
-                    for item in results:
-                        results_list.controls.append(create_result_card(item))
-            except Exception as err:
-                loading_ring.visible = False
-                status_text.value = f"Error al buscar: {err}"
-            page.update()
-
-        threading.Thread(target=background_search, daemon=True).start()
-
     def create_result_card(item):
         duration_sec = item.get('duration', 0) or 0
         duration_min = f"{duration_sec // 60}:{duration_sec % 60:02d}" if duration_sec else "--:--"
@@ -71,7 +43,7 @@ def main(page: ft.Page):
                     ft.Button(
                         "Usar en L4D2",
                         icon=ft.Icons.DOWNLOAD,
-                        on_click=lambda e: process_song_download(item['url'], item['title'])
+                        on_click=lambda e: page.run_task(process_song_download, item['url'], item['title'])
                     )
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN
@@ -82,30 +54,56 @@ def main(page: ft.Page):
             border=ft.Border.all(1, "#222222")
         )
 
-    def process_song_download(url, title):
+    async def process_song_download(url, title):
         status_text.value = f"Descargando y convirtiendo: {title}..."
         loading_ring.visible = True
         page.update()
 
-        def background_download():
-            try:
-                out_dir = os.path.join(os.getcwd(), "downloads")
-                os.makedirs(out_dir, exist_ok=True)
-                out_wav = os.path.join(out_dir, "voice_input.wav")
-                
-                download_and_convert(url, out_wav)
-                
-                loading_ring.visible = False
-                status_text.value = f"✅ ¡Listo! Audio procesado y guardado como voice_input.wav en /downloads/"
-            except Exception as err:
-                loading_ring.visible = False
-                status_text.value = f"❌ Error al procesar audio: {err}"
-            page.update()
+        try:
+            out_dir = os.path.join(os.getcwd(), "downloads")
+            os.makedirs(out_dir, exist_ok=True)
+            out_wav = os.path.join(out_dir, "voice_input.wav")
+            
+            # Ejecutar tarea pesada en un hilo para no bloquear la UI
+            await asyncio.to_thread(download_and_convert, url, out_wav)
+            
+            loading_ring.visible = False
+            status_text.value = f"✅ ¡Listo! Audio procesado y guardado como voice_input.wav en /downloads/"
+        except Exception as err:
+            loading_ring.visible = False
+            status_text.value = f"❌ Error al procesar audio: {err}"
+        
+        page.update()
 
-        threading.Thread(target=background_download, daemon=True).start()
+    async def perform_search(e):
+        query = search_input.value.strip()
+        if not query:
+            return
 
-    search_button = ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=perform_search)
-    search_input.on_submit = perform_search
+        results_list.controls.clear()
+        loading_ring.visible = True
+        status_text.value = "Buscando en YouTube..."
+        page.update()
+
+        try:
+            # Ejecutar yt-dlp en un hilo paralelo
+            results = await asyncio.to_thread(search_youtube, query, 6)
+            loading_ring.visible = False
+            
+            if not results:
+                status_text.value = "No se encontraron resultados."
+            else:
+                status_text.value = f"Se encontraron {len(results)} resultados:"
+                for item in results:
+                    results_list.controls.append(create_result_card(item))
+        except Exception as err:
+            loading_ring.visible = False
+            status_text.value = f"Error al buscar: {err}"
+            
+        page.update()
+
+    search_button = ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=lambda e: page.run_task(perform_search, e))
+    search_input.on_submit = lambda e: page.run_task(perform_search, e)
 
     page.add(
         ft.Column(
