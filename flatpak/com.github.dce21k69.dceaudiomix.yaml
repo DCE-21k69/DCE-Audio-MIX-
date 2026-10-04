@@ -1,0 +1,22 @@
+app-id: com.github.dce21k69.dceaudiomix
+runtime: org.freedesktop.Platform
+runtime-version: '23.08'
+sdk: org.freedesktop.Sdk
+command: dce_audio_mix
+
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=x11
+  - --socket=wayland
+  - --socket=pulseaudio
+  - --filesystem=home
+
+modules:
+  - name: dce_audio_mix
+    buildsystem: simple
+    build-commands:
+      - install -D dce_audio_mix /app/bin/dce_audio_mix
+    sources:
+      - type: dir
+        path: ../dist/linux
