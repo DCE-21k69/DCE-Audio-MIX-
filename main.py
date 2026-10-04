@@ -79,7 +79,7 @@ def main(page: ft.Page):
             bgcolor="#141414",
             padding=10,
             border_radius=8,
-            border=ft.border.all(1, "#222222")
+            border=ft.Border.all(1, "#222222")
         )
 
     def process_song_download(url, title):
