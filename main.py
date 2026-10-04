@@ -168,7 +168,7 @@ def main(page: ft.Page):
     def on_list_scroll(e: ft.OnScrollEvent):
         # Si estamos cerca del final de la lista, cargar mas
         if e.pixels >= e.max_scroll_extent - 150:
-            page.run_task(lambda _: load_more_results())
+            page.run_task(load_more_results)
 
     results_list.on_scroll = on_list_scroll
 
