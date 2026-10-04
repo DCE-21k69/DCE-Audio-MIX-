@@ -505,25 +505,8 @@ def main(page: ft.Page):
 
     btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400, bgcolor="#1a2e1a")
 
-    ninja_panel = ft.Container(
-        content=ft.Column([
-            ft.Text("🥷 Modo Ninja (Captura automática de teclado)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
-            lbl_input_warning,
-            btn_fix_input,
-            ft.Text("Haz clic en los botones y presiona la tecla que desees asignar.", size=12, color=ft.Colors.WHITE_54),
-            ft.Row([
-                ft.Column([btn_pause_rec, lbl_pause]),
-                ft.Column([btn_prev_rec, lbl_prev]),
-                ft.Column([btn_next_rec, lbl_next]),
-            ]),
-            ft.Row([btn_aplicar_hotkeys], alignment=ft.MainAxisAlignment.END)
-        ]),
-        bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
-    )
-
-
     # --- CHECK GRUPO INPUT para evdev ---
-    import grp, subprocess as _sp
+    import grp
     def _user_in_input_group():
         try:
             members = grp.getgrnam("input").gr_mem
@@ -570,6 +553,22 @@ def main(page: ft.Page):
             )
         ]),
         visible=not _in_input
+    )
+
+    ninja_panel = ft.Container(
+        content=ft.Column([
+            ft.Text("🥷 Modo Ninja (Captura automática de teclado)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            lbl_input_warning,
+            btn_fix_input,
+            ft.Text("Haz clic en los botones y presiona la tecla que desees asignar.", size=12, color=ft.Colors.WHITE_54),
+            ft.Row([
+                ft.Column([btn_pause_rec, lbl_pause]),
+                ft.Column([btn_prev_rec, lbl_prev]),
+                ft.Column([btn_next_rec, lbl_next]),
+            ]),
+            ft.Row([btn_aplicar_hotkeys], alignment=ft.MainAxisAlignment.END)
+        ]),
+        bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
     )
 
     playlist_column = ft.Column([
