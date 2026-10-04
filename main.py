@@ -46,7 +46,7 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         check_l4d2_status()
 
-    btn_connect = ft.ElevatedButton("Conectar / Inyectar CFG", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
+    btn_connect = ft.Button("Conectar / Inyectar CFG", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
 
     top_bar = ft.Container(
         content=ft.Row([
@@ -229,7 +229,7 @@ def main(page: ft.Page):
             ft.Row([
                 ft.Text("Canciones Guardadas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
                 ft.Container(expand=True),
-                ft.ElevatedButton("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"]))
+                ft.Button("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"]))
             ]),
             ft.Divider(color="#222222"),
             playlist_list
