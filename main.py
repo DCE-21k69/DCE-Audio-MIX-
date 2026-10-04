@@ -164,14 +164,11 @@ def main(page: ft.Page):
 
     results_list.on_scroll = lambda e: page.run_task(load_more_results) if e.pixels >= e.max_scroll_extent - 150 else None
 
-    tab_search = ft.Tab(
-        text="🔍 Buscador YouTube",
-        content=ft.Column([
-            ft.Row([search_input, ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=lambda e: page.run_task(perform_search, e))]),
-            ft.Row([loading_ring, status_text]),
-            results_list
-        ], expand=True)
-    )
+    search_column = ft.Column([
+        ft.Row([search_input, ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=lambda e: page.run_task(perform_search, e))]),
+        ft.Row([loading_ring, status_text]),
+        results_list
+    ], expand=True)
 
     # --- PESTAÑA 2: PLAYLIST ---
     playlist_list = ft.ListView(expand=True, spacing=10)
@@ -223,28 +220,39 @@ def main(page: ft.Page):
     file_picker = ft.FilePicker(on_result=on_file_picked)
     page.overlay.append(file_picker)
 
-    tab_playlist = ft.Tab(
-        text="🎵 Mi Playlist",
+    playlist_column = ft.Column([
+        ft.Row([
+            ft.Text("Canciones Guardadas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
+            ft.Container(expand=True),
+            ft.Button("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"]))
+        ]),
+        ft.Divider(color="#222222"),
+        playlist_list
+    ], expand=True)
+
+    # --- ENSAMBLE PRINCIPAL ---
+    tabs_layout = ft.Tabs(
+        length=2,
+        selected_index=0,
+        expand=True,
         content=ft.Column([
-            ft.Row([
-                ft.Text("Canciones Guardadas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
-                ft.Container(expand=True),
-                ft.Button("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"]))
-            ]),
-            ft.Divider(color="#222222"),
-            playlist_list
+            ft.TabBar(
+                tabs=[
+                    ft.Tab(label="🔍 Buscador YouTube"),
+                    ft.Tab(label="🎵 Mi Playlist"),
+                ]
+            ),
+            ft.TabBarView(
+                expand=True,
+                controls=[
+                    ft.Container(content=search_column, padding=10),
+                    ft.Container(content=playlist_column, padding=10)
+                ]
+            )
         ], expand=True)
     )
 
-    # --- ENSAMBLE PRINCIPAL ---
-    tabs = ft.Tabs(
-        selected_index=0,
-        animation_duration=300,
-        tabs=[tab_search, tab_playlist],
-        expand=True
-    )
-
-    page.add(ft.Column([top_bar, tabs], expand=True))
+    page.add(ft.Column([top_bar, tabs_layout], expand=True))
     
     check_l4d2_status()
     load_playlist_view()
