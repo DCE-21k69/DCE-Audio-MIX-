@@ -14,12 +14,12 @@ def main(page: ft.Page):
     if os.path.exists(icon_path):
         page.window.icon = icon_path
 
-    # Estado de la busqueda infinita
     search_state = {
         "query": "",
         "loaded_count": 0,
         "is_loading_more": False,
-        "has_more": True
+        "has_more": True,
+        "is_direct_link": False
     }
 
     search_input = ft.TextField(
@@ -32,7 +32,6 @@ def main(page: ft.Page):
     status_text = ft.Text("", color="#ffaa00", size=14)
     loading_ring = ft.ProgressRing(visible=False, width=20, height=20, color="#ffaa00")
     
-    # Anillo de carga para el scroll infinito
     bottom_loading = ft.Container(
         content=ft.ProgressRing(width=30, height=30, color="#00ffaa"),
         alignment=ft.Alignment.CENTER,
@@ -40,9 +39,29 @@ def main(page: ft.Page):
         visible=False
     )
 
-    def create_result_card(item):
+    def create_result_card(item, is_direct_link=False):
         duration_sec = item.get('duration', 0) or 0
         duration_min = f"{duration_sec // 60}:{duration_sec % 60:02d}" if duration_sec else "--:--"
+        
+        # Boton principal (Descargar)
+        btn_download = ft.Button(
+            "Usar en L4D2",
+            icon=ft.Icons.DOWNLOAD,
+            on_click=lambda e: page.run_task(process_song_download, item['url'], item['title'])
+        )
+        
+        # Boton secundario (Navegador)
+        btn_browser = ft.IconButton(
+            icon=ft.Icons.OPEN_IN_BROWSER,
+            tooltip="Abrir en YouTube",
+            icon_color=ft.Colors.WHITE_54,
+            on_click=lambda e: page.launch_url(item['url'])
+        )
+
+        # Agrupamos botones
+        buttons_row = ft.Row([btn_download])
+        if not is_direct_link:
+            buttons_row.controls.append(btn_browser)
         
         return ft.Container(
             content=ft.Row(
@@ -56,11 +75,7 @@ def main(page: ft.Page):
                         expand=True,
                         spacing=4
                     ),
-                    ft.Button(
-                        "Usar en L4D2",
-                        icon=ft.Icons.DOWNLOAD,
-                        on_click=lambda e: page.run_task(process_song_download, item['url'], item['title'])
-                    )
+                    buttons_row
                 ],
                 alignment=ft.MainAxisAlignment.SPACE_BETWEEN
             ),
@@ -95,11 +110,13 @@ def main(page: ft.Page):
         if not query:
             return
 
-        # Resetear estado
+        is_direct = "youtube.com" in query or "youtu.be" in query
+
         search_state["query"] = query
         search_state["loaded_count"] = 15
         search_state["is_loading_more"] = False
         search_state["has_more"] = True
+        search_state["is_direct_link"] = is_direct
 
         results_list.controls.clear()
         loading_ring.visible = True
@@ -116,7 +133,7 @@ def main(page: ft.Page):
             else:
                 status_text.value = f"Mostrando primeros {len(results)} resultados:"
                 for item in results:
-                    results_list.controls.append(create_result_card(item))
+                    results_list.controls.append(create_result_card(item, is_direct))
                 results_list.controls.append(bottom_loading)
                 
                 if len(results) < search_state["loaded_count"]:
@@ -139,18 +156,14 @@ def main(page: ft.Page):
 
         target_count = search_state["loaded_count"] + 15
         try:
-            # Obtener mas resultados
             results = await asyncio.to_thread(search_youtube, search_state["query"], target_count)
-            
-            # Extraer solo los nuevos
             new_results = results[search_state["loaded_count"]:]
             
             if not new_results:
                 search_state["has_more"] = False
             else:
-                # Insertar antes del circulo de carga
                 for item in new_results:
-                    results_list.controls.insert(-1, create_result_card(item))
+                    results_list.controls.insert(-1, create_result_card(item, search_state["is_direct_link"]))
                 
                 search_state["loaded_count"] += len(new_results)
                 status_text.value = f"Mostrando {search_state['loaded_count']} resultados:"
@@ -166,7 +179,6 @@ def main(page: ft.Page):
         page.update()
 
     def on_list_scroll(e: ft.OnScrollEvent):
-        # Si estamos cerca del final de la lista, cargar mas
         if e.pixels >= e.max_scroll_extent - 150:
             page.run_task(load_more_results)
 
