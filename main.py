@@ -270,7 +270,7 @@ def main(page: ft.Page):
 
     # --- MODO NINJA ---
     def set_hotkey_next(e):
-        key = hotkey_next.value
+        key = hotkey_next.value.strip()
         if not key: return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
@@ -285,7 +285,7 @@ def main(page: ft.Page):
         page.update()
 
     def set_hotkey_prev(e):
-        key = hotkey_prev.value
+        key = hotkey_prev.value.strip()
         if not key: return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
@@ -299,15 +299,27 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         page.update()
 
-    keys_opts = [ft.dropdown.Option(f"F{i}") for i in range(5, 13)]
-    hotkey_next = ft.Dropdown(label="Tecla Siguiente Canción", options=keys_opts, width=220, on_select=set_hotkey_next)
-    hotkey_prev = ft.Dropdown(label="Tecla Anterior Canción", options=keys_opts, width=220, on_select=set_hotkey_prev)
+    def set_hotkey_pause(e):
+        key = hotkey_pause.value
+        if not key: return
+        key = key.strip()
+        bound = l4d2.get_bound_keys()
+        if key.lower() in bound:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} en uso: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
+            page.snack_bar.open = True; page.update(); return
+        success, msg = l4d2.generate_cfg(key)
+        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Pausa L4D2 asignada a {key} (Usa 'exec dce_audio.cfg')"), bgcolor=ft.Colors.GREEN_800)
+        page.snack_bar.open = True; page.update()
+
+    hotkey_pause = ft.TextField(label="Tecla Pausar/Play", hint_text="Ej: F8", width=180, on_submit=set_hotkey_pause)
+    hotkey_next = ft.TextField(label="Tecla Siguiente", hint_text="Ej: F9", width=180, on_submit=set_hotkey_next)
+    hotkey_prev = ft.TextField(label="Tecla Anterior", hint_text="Ej: F10", width=180, on_submit=set_hotkey_prev)
     
     ninja_panel = ft.Container(
         content=ft.Column([
-            ft.Text("🥷 Modo Ninja (Global Hotkeys)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            ft.Text("🥷 Modo Ninja (Escribe la tecla y presiona Enter)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
             ft.Text("Cambia de canción sin minimizar el juego. Verifica que la tecla no esté usada en tu CFG.", size=12, color=ft.Colors.WHITE_54),
-            ft.Row([hotkey_prev, hotkey_next])
+            ft.Row([hotkey_pause, hotkey_prev, hotkey_next])
         ]),
         bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
     )
