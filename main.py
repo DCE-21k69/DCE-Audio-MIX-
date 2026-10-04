@@ -35,7 +35,7 @@ def main(page: ft.Page):
     # Anillo de carga para el scroll infinito
     bottom_loading = ft.Container(
         content=ft.ProgressRing(width=30, height=30, color="#00ffaa"),
-        alignment=ft.alignment.center,
+        alignment=ft.Alignment.CENTER,
         padding=20,
         visible=False
     )
