@@ -279,7 +279,7 @@ def main(page: ft.Page):
             hotkey_next.value = None
             page.update()
             return
-        hotkey_manager.set_hotkey(f"<{key.lower()}>", play_next_song)
+        hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
@@ -294,10 +294,36 @@ def main(page: ft.Page):
             hotkey_prev.value = None
             page.update()
             return
-        hotkey_manager.set_hotkey(f"<{key.lower()}>", play_prev_song)
+        hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True
         page.update()
+
+
+    L4D2_TO_PYNPUT = {
+        "leftarrow": "<left>",
+        "rightarrow": "<right>",
+        "uparrow": "<up>",
+        "downarrow": "<down>",
+        "kp_plus": "+",
+        "kp_minus": "-",
+        "kp_enter": "<enter>",
+        "space": "<space>",
+        "escape": "<esc>",
+        "enter": "<enter>",
+        "shift": "<shift>",
+        "ctrl": "<ctrl>",
+        "alt": "<alt>",
+        "tab": "<tab>",
+    }
+
+    def format_pynput_key(l4d2_key):
+        k = l4d2_key.lower()
+        if k in L4D2_TO_PYNPUT:
+            return L4D2_TO_PYNPUT[k]
+        if len(k) > 1 and k.startswith("f") and k[1:].isdigit():
+            return f"<{k}>"
+        return k
 
     def set_hotkey_pause(e):
         key = hotkey_pause.value
