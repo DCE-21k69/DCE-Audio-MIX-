@@ -300,8 +300,8 @@ def main(page: ft.Page):
         page.update()
 
     keys_opts = [ft.dropdown.Option(f"F{i}") for i in range(5, 13)]
-    hotkey_next = ft.Dropdown(label="Tecla Siguiente Canción", options=keys_opts, width=220, on_change=set_hotkey_next)
-    hotkey_prev = ft.Dropdown(label="Tecla Anterior Canción", options=keys_opts, width=220, on_change=set_hotkey_prev)
+    hotkey_next = ft.Dropdown(label="Tecla Siguiente Canción", options=keys_opts, width=220, on_select=set_hotkey_next)
+    hotkey_prev = ft.Dropdown(label="Tecla Anterior Canción", options=keys_opts, width=220, on_select=set_hotkey_prev)
     
     ninja_panel = ft.Container(
         content=ft.Column([
