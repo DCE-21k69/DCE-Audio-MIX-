@@ -14,6 +14,14 @@ def main(page: ft.Page):
     if os.path.exists(icon_path):
         page.window.icon = icon_path
 
+    # Estado de la busqueda infinita
+    search_state = {
+        "query": "",
+        "loaded_count": 0,
+        "is_loading_more": False,
+        "has_more": True
+    }
+
     search_input = ft.TextField(
         hint_text="Escribe el nombre de una canción o pega un enlace de YouTube...",
         expand=True,
@@ -23,6 +31,14 @@ def main(page: ft.Page):
     results_list = ft.ListView(expand=True, spacing=10, padding=10)
     status_text = ft.Text("", color="#ffaa00", size=14)
     loading_ring = ft.ProgressRing(visible=False, width=20, height=20, color="#ffaa00")
+    
+    # Anillo de carga para el scroll infinito
+    bottom_loading = ft.Container(
+        content=ft.ProgressRing(width=30, height=30, color="#00ffaa"),
+        alignment=ft.alignment.center,
+        padding=20,
+        visible=False
+    )
 
     def create_result_card(item):
         duration_sec = item.get('duration', 0) or 0
@@ -64,7 +80,6 @@ def main(page: ft.Page):
             os.makedirs(out_dir, exist_ok=True)
             out_wav = os.path.join(out_dir, "voice_input.wav")
             
-            # Ejecutar tarea pesada en un hilo para no bloquear la UI
             await asyncio.to_thread(download_and_convert, url, out_wav)
             
             loading_ring.visible = False
@@ -80,27 +95,82 @@ def main(page: ft.Page):
         if not query:
             return
 
+        # Resetear estado
+        search_state["query"] = query
+        search_state["loaded_count"] = 15
+        search_state["is_loading_more"] = False
+        search_state["has_more"] = True
+
         results_list.controls.clear()
         loading_ring.visible = True
         status_text.value = "Buscando en YouTube..."
         page.update()
 
         try:
-            # Ejecutar yt-dlp en un hilo paralelo
-            results = await asyncio.to_thread(search_youtube, query, 6)
+            results = await asyncio.to_thread(search_youtube, query, search_state["loaded_count"])
             loading_ring.visible = False
             
             if not results:
                 status_text.value = "No se encontraron resultados."
+                search_state["has_more"] = False
             else:
-                status_text.value = f"Se encontraron {len(results)} resultados:"
+                status_text.value = f"Mostrando primeros {len(results)} resultados:"
                 for item in results:
                     results_list.controls.append(create_result_card(item))
+                results_list.controls.append(bottom_loading)
+                
+                if len(results) < search_state["loaded_count"]:
+                    search_state["has_more"] = False
+                    bottom_loading.visible = False
+                    
         except Exception as err:
             loading_ring.visible = False
             status_text.value = f"Error al buscar: {err}"
             
         page.update()
+
+    async def load_more_results():
+        if search_state["is_loading_more"] or not search_state["has_more"]:
+            return
+            
+        search_state["is_loading_more"] = True
+        bottom_loading.visible = True
+        page.update()
+
+        target_count = search_state["loaded_count"] + 15
+        try:
+            # Obtener mas resultados
+            results = await asyncio.to_thread(search_youtube, search_state["query"], target_count)
+            
+            # Extraer solo los nuevos
+            new_results = results[search_state["loaded_count"]:]
+            
+            if not new_results:
+                search_state["has_more"] = False
+            else:
+                # Insertar antes del circulo de carga
+                for item in new_results:
+                    results_list.controls.insert(-1, create_result_card(item))
+                
+                search_state["loaded_count"] += len(new_results)
+                status_text.value = f"Mostrando {search_state['loaded_count']} resultados:"
+                
+                if len(results) < target_count:
+                    search_state["has_more"] = False
+                    
+        except Exception as err:
+            print(f"Error cargando mas: {err}")
+            
+        search_state["is_loading_more"] = False
+        bottom_loading.visible = search_state["has_more"]
+        page.update()
+
+    def on_list_scroll(e: ft.OnScrollEvent):
+        # Si estamos cerca del final de la lista, cargar mas
+        if e.pixels >= e.max_scroll_extent - 150:
+            page.run_task(lambda _: load_more_results())
+
+    results_list.on_scroll = on_list_scroll
 
     search_button = ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=lambda e: page.run_task(perform_search, e))
     search_input.on_submit = lambda e: page.run_task(perform_search, e)
