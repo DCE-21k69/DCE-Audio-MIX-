@@ -508,6 +508,8 @@ def main(page: ft.Page):
     ninja_panel = ft.Container(
         content=ft.Column([
             ft.Text("🥷 Modo Ninja (Captura automática de teclado)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            lbl_input_warning,
+            btn_fix_input,
             ft.Text("Haz clic en los botones y presiona la tecla que desees asignar.", size=12, color=ft.Colors.WHITE_54),
             ft.Row([
                 ft.Column([btn_pause_rec, lbl_pause]),
@@ -517,6 +519,57 @@ def main(page: ft.Page):
             ft.Row([btn_aplicar_hotkeys], alignment=ft.MainAxisAlignment.END)
         ]),
         bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
+    )
+
+
+    # --- CHECK GRUPO INPUT para evdev ---
+    import grp, subprocess as _sp
+    def _user_in_input_group():
+        try:
+            members = grp.getgrnam("input").gr_mem
+            import os, pwd
+            username = pwd.getpwuid(os.getuid()).pw_name
+            return username in members
+        except Exception:
+            return False
+
+    def _try_add_to_input_group(e):
+        import subprocess, os, pwd
+        username = pwd.getpwuid(os.getuid()).pw_name
+        try:
+            # pkexec pide contraseña con diálogo gráfico del sistema
+            subprocess.run(["pkexec", "usermod", "-aG", "input", username], check=True)
+            page.snack_bar = ft.SnackBar(
+                ft.Text("✅ ¡Listo! Cierra sesión y vuelve a entrar para activar los hotkeys."),
+                bgcolor=ft.Colors.GREEN_800
+            )
+            btn_fix_input.visible = False
+            lbl_input_warning.visible = False
+        except Exception as ex:
+            page.snack_bar = ft.SnackBar(
+                ft.Text(f"❌ Error: {ex}"),
+                bgcolor=ft.Colors.RED_800
+            )
+        page.snack_bar.open = True
+        page.update()
+
+    _in_input = _user_in_input_group()
+    btn_fix_input = ft.Button(
+        "Activar Hotkeys (requiere contraseña)",
+        icon=ft.Icons.LOCK_OPEN,
+        on_click=_try_add_to_input_group,
+        color=ft.Colors.ORANGE_400,
+        visible=not _in_input
+    )
+    lbl_input_warning = ft.Container(
+        content=ft.Row([
+            ft.Icon(ft.Icons.WARNING_AMBER, color=ft.Colors.ORANGE_400),
+            ft.Text(
+                "Necesitas permisos para usar hotkeys globales. Haz clic en el botón para activarlos.",
+                color=ft.Colors.ORANGE_400, size=12
+            )
+        ]),
+        visible=not _in_input
     )
 
     playlist_column = ft.Column([
