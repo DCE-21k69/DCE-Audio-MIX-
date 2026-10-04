@@ -3,28 +3,50 @@ import subprocess
 import yt_dlp
 
 def search_youtube(query: str, max_results: int = 5):
-    """Busca canciones en YouTube y devuelve titulo, url, duracion y miniatura."""
+    """Busca canciones en YouTube o procesa un enlace directo."""
     ydl_opts = {
         'extract_flat': True,
         'skip_download': True,
         'quiet': True,
         'no_warnings': True,
+        'ignoreerrors': True,
     }
     
     results = []
-    search_url = f"ytsearch{max_results}:{query}"
     
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        info = ydl.extract_info(search_url, download=False)
-        if info and 'entries' in info:
-            for entry in info['entries']:
-                results.append({
-                    'id': entry.get('id'),
-                    'title': entry.get('title'),
-                    'url': f"https://www.youtube.com/watch?v={entry.get('id')}",
-                    'duration': entry.get('duration'),
-                    'thumbnail': f"https://img.youtube.com/vi/{entry.get('id')}/hqdefault.jpg"
-                })
+    # Verificar si es un enlace directo
+    if "youtube.com" in query or "youtu.be" in query:
+        search_url = query
+    else:
+        search_url = f"ytsearch{max_results}:{query}"
+    
+    try:
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            info = ydl.extract_info(search_url, download=False)
+            if info:
+                if 'entries' in info:
+                    for entry in info['entries']:
+                        if entry:
+                            video_id = entry.get('id')
+                            results.append({
+                                'id': video_id,
+                                'title': entry.get('title', 'Sin titulo'),
+                                'url': f"https://www.youtube.com/watch?v={video_id}",
+                                'duration': entry.get('duration', 0),
+                                'thumbnail': f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+                            })
+                else:
+                    video_id = info.get('id')
+                    results.append({
+                        'id': video_id,
+                        'title': info.get('title', 'Sin titulo'),
+                        'url': f"https://www.youtube.com/watch?v={video_id}",
+                        'duration': info.get('duration', 0),
+                        'thumbnail': f"https://img.youtube.com/vi/{video_id}/hqdefault.jpg"
+                    })
+    except Exception as e:
+        print(f"Error en busqueda de YouTube: {e}")
+        
     return results
 
 def download_and_convert(youtube_url: str, output_path: str):
@@ -36,13 +58,12 @@ def download_and_convert(youtube_url: str, output_path: str):
         'outtmpl': temp_audio,
         'quiet': True,
         'no_warnings': True,
+        'ignoreerrors': True,
     }
     
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([youtube_url])
         
-    # Convertir con FFmpeg a 16-bit PCM (s16), Mono (-ac 1), 22050Hz (-ar 22050)
-    # y aplicar filtro loudnorm para normalizar el volumen
     cmd = [
         "ffmpeg", "-y",
         "-i", temp_audio,
@@ -59,9 +80,3 @@ def download_and_convert(youtube_url: str, output_path: str):
         os.remove(temp_audio)
         
     return output_path
-
-if __name__ == "__main__":
-    print("Probando buscador de YouTube...")
-    res = search_youtube("linkin park numb", 3)
-    for r in res:
-        print(f"- {r['title']} ({r['duration']}s) -> {r['url']}")

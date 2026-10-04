@@ -14,11 +14,9 @@ def main(page: ft.Page):
     if os.path.exists(icon_path):
         page.window.icon = icon_path
 
-    # Componentes de la interfaz
     search_input = ft.TextField(
         hint_text="Escribe el nombre de una canción o pega un enlace de YouTube...",
         expand=True,
-        border_color="#ffaa00",
         bgcolor="#101010"
     )
 
@@ -55,15 +53,16 @@ def main(page: ft.Page):
         threading.Thread(target=background_search, daemon=True).start()
 
     def create_result_card(item):
-        duration_min = f"{item['duration'] // 60}:{item['duration'] % 60:02d}" if item['duration'] else "--:--"
+        duration_sec = item.get('duration', 0) or 0
+        duration_min = f"{duration_sec // 60}:{duration_sec % 60:02d}" if duration_sec else "--:--"
         
         return ft.Container(
             content=ft.Row(
                 [
-                    ft.Image(src=item['thumbnail'], width=120, height=70, fit=ft.ImageFit.COVER, border_radius=6),
+                    ft.Image(src=item['thumbnail'], width=120, height=70, fit=ft.BoxFit.COVER, border_radius=6),
                     ft.Column(
                         [
-                            ft.Text(item['title'], weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, max_lines=2, overflow=ft.TextOverflow.ELLIPSIStruncate),
+                            ft.Text(item['title'], weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE, max_lines=2, overflow=ft.TextOverflow.ELLIPSIS),
                             ft.Text(f"Duración: {duration_min}", size=12, color=ft.Colors.WHITE_54)
                         ],
                         expand=True,
@@ -108,11 +107,9 @@ def main(page: ft.Page):
     search_button = ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=perform_search)
     search_input.on_submit = perform_search
 
-    # Layout Principal
     page.add(
         ft.Column(
             [
-                # Encabezado
                 ft.Row(
                     [
                         ft.Image(src=icon_path, width=40, height=40) if os.path.exists(icon_path) else ft.Icon(ft.Icons.MUSIC_NOTE, color="#ffaa00"),
@@ -121,11 +118,8 @@ def main(page: ft.Page):
                     alignment=ft.MainAxisAlignment.START
                 ),
                 ft.Divider(color="#222222"),
-                # Barra de búsqueda
                 ft.Row([search_input, search_button]),
-                # Estado
                 ft.Row([loading_ring, status_text], alignment=ft.MainAxisAlignment.START),
-                # Resultados
                 results_list
             ],
             expand=True
