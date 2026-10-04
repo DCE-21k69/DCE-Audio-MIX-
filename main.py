@@ -17,7 +17,7 @@ def main(page: ft.Page):
                 ft.Image(src=icon_path, width=150, height=150) if os.path.exists(icon_path) else ft.Icon(ft.Icons.MUSIC_NOTE, size=150),
                 ft.Text("DCE AUDIO MIX", size=30, weight=ft.FontWeight.BOLD, color="#ffaa00"),
                 ft.Text("Bienvenido al gestor de audio definitivo para Source Engine.", color=ft.Colors.WHITE_70),
-                ft.ElevatedButton("Buscar Canción (WIP)", icon=ft.Icons.SEARCH)
+                ft.Button("Buscar Canción (WIP)", icon=ft.Icons.SEARCH)
             ],
             alignment=ft.MainAxisAlignment.CENTER,
             horizontal_alignment=ft.CrossAxisAlignment.CENTER,
