@@ -311,6 +311,10 @@ def main(page: ft.Page):
         hotkey_manager.set_hotkey(saved_next, play_next_song)
 
     FLET_TO_L4D2 = {
+        "ñ": "semicolon",
+        "Ñ": "semicolon",
+        "ç": "backslash",
+        "Ç": "backslash",
         "Arrow Left": "leftarrow",
         "Arrow Right": "rightarrow",
         "Arrow Up": "uparrow",
@@ -322,6 +326,10 @@ def main(page: ft.Page):
         "Numpad Subtract": "kp_minus",
         "+": "+",
         "-": "-",
+        ",": "comma",
+        ".": "period",
+        ";": "semicolon",
+        ":": "semicolon",
         "Tab": "tab",
         "Shift Left": "shift",
         "Shift Right": "shift",
@@ -336,12 +344,22 @@ def main(page: ft.Page):
             return FLET_TO_L4D2[flet_key]
         return flet_key.lower()
 
+    def clean_engine_key(k: str):
+        k_clean = str(k).strip()
+        if "semicolon" in k_clean.lower() or "ñ" in k_clean.lower():
+            return "semicolon"
+        return k_clean
+
     recording_state = {"active": None}
 
     # Labels de estado de teclas
-    lbl_pause = ft.Text(saved_pause, color=ft.Colors.WHITE_38, size=13)
-    lbl_prev = ft.Text(saved_prev if saved_prev else "Clic para asignar...", color=ft.Colors.WHITE_38 if saved_prev else ft.Colors.WHITE_54, size=13)
-    lbl_next = ft.Text(saved_next if saved_next else "Clic para asignar...", color=ft.Colors.WHITE_38 if saved_next else ft.Colors.WHITE_54, size=13)
+    init_pause_disp = "semicolon (tecla Ñ)" if saved_pause == "semicolon" else saved_pause
+    init_prev_disp = "semicolon (tecla Ñ)" if saved_prev == "semicolon" else (saved_prev if saved_prev else "Clic para asignar...")
+    init_next_disp = "semicolon (tecla Ñ)" if saved_next == "semicolon" else (saved_next if saved_next else "Clic para asignar...")
+
+    lbl_pause = ft.Text(init_pause_disp, color=ft.Colors.WHITE_38, size=13)
+    lbl_prev = ft.Text(init_prev_disp, color=ft.Colors.WHITE_38 if saved_prev else ft.Colors.WHITE_54, size=13)
+    lbl_next = ft.Text(init_next_disp, color=ft.Colors.WHITE_38 if saved_next else ft.Colors.WHITE_54, size=13)
 
     def mark_applied(lbl):
         lbl.color = ft.Colors.WHITE_38
@@ -361,10 +379,11 @@ def main(page: ft.Page):
         
         target = recording_state["active"]
         l4d2_key = flet_key_to_l4d2(e.key)
+        disp_key = "semicolon (tecla Ñ)" if l4d2_key == "semicolon" else l4d2_key
         
         def update_label(lbl):
-            same = (lbl.color == ft.Colors.WHITE_38 and lbl.value == l4d2_key)
-            lbl.value = l4d2_key
+            same = (lbl.color == ft.Colors.WHITE_38 and clean_engine_key(lbl.value) == clean_engine_key(disp_key))
+            lbl.value = disp_key
             lbl.color = ft.Colors.WHITE_38 if same else ft.Colors.GREEN_400
             lbl.update()
             return same
@@ -413,9 +432,13 @@ def main(page: ft.Page):
             show_notify("Presiona una tecla en el teclado primero.", is_warning=True)
             return
 
-        pause_val = pause_k if pause_k != "Clic para asignar..." else "x"
-        prev_val = prev_k if prev_k != "Clic para asignar..." else ""
-        next_val = next_k if next_k != "Clic para asignar..." else ""
+        raw_pause = pause_k if pause_k != "Clic para asignar..." else "x"
+        raw_prev = prev_k if prev_k != "Clic para asignar..." else ""
+        raw_next = next_k if next_k != "Clic para asignar..." else ""
+
+        pause_val = clean_engine_key(raw_pause)
+        prev_val = clean_engine_key(raw_prev) if raw_prev else ""
+        next_val = clean_engine_key(raw_next) if raw_next else ""
 
         # Verificar duplicados entre nuestras propias teclas
         chosen = [k for k in [pause_val, prev_val, next_val] if k]

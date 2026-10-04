@@ -71,6 +71,9 @@ def download_and_convert(youtube_url: str, output_path: str):
         "-ar", "22050",
         "-acodec", "pcm_s16le",
         "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-fflags", "+bitexact",
+        "-flags:a", "+bitexact",
+        "-map_metadata", "-1",
         output_path
     ]
     

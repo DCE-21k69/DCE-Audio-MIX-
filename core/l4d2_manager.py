@@ -45,16 +45,31 @@ class L4D2Manager:
         cfg_dir = os.path.join(self.game_path, "left4dead2", "cfg")
         if not os.path.exists(cfg_dir):
             return False, "Carpeta cfg de L4D2 no encontrada."
-        cfg_content = f"""// Generado por DCE Audio Mix
-alias dce_play "voice_inputfromfile 1; +voicerecord; alias dce_toggle dce_stop"
-alias dce_stop "-voicerecord; voice_inputfromfile 0; alias dce_toggle dce_play"
+
+        # Mapear tecla para Source Engine (ej. Ñ física es semicolon)
+        clean_key = str(hotkey).lower().strip()
+        if "semicolon" in clean_key or clean_key == "ñ":
+            clean_key = "semicolon"
+
+        cfg_content = f"""// Generado por DCE Audio MIX - Left 4 Dead 2
+voice_enable 1
+voice_modenable 1
+voice_scale 1
+voice_loopback 1
+voice_forcemicrecord 0
+
+alias dce_play "voice_inputfromfile 1; voice_loopback 1; +voicerecord; alias dce_toggle dce_stop"
+alias dce_stop "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias dce_toggle dce_play"
 alias dce_toggle "dce_play"
-bind "{hotkey}" "dce_toggle"
-echo "DCE Audio Mix cargado con exito. Presiona {hotkey} para reproducir."
+bind "{clean_key}" "dce_toggle"
+echo "=========================================="
+echo "DCE Audio MIX cargado con exito!"
+echo "Presiona '{clean_key}' para Reproducir/Pausar musica."
+echo "=========================================="
 """
         try:
             cfg_path = os.path.join(cfg_dir, "dce_audio.cfg")
-            with open(cfg_path, "w") as f:
+            with open(cfg_path, "w", encoding="utf-8") as f:
                 f.write(cfg_content)
             
             # Ocultar archivo en Windows

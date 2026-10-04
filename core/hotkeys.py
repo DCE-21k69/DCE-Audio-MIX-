@@ -32,12 +32,22 @@ EVDEV_TO_NAME: dict[int, str] = {
     ecodes.KEY_KP4: "kp_leftarrow", ecodes.KEY_KP5: "kp_5",
     ecodes.KEY_KP6: "kp_rightarrow", ecodes.KEY_KP7: "kp_home",
     ecodes.KEY_KP8: "kp_uparrow", ecodes.KEY_KP9: "kp_pgup",
-    # Comunes
-    ecodes.KEY_SPACE:  "space",
-    ecodes.KEY_ENTER:  "enter",
-    ecodes.KEY_ESC:    "escape",
-    ecodes.KEY_TAB:    "tab",
-    ecodes.KEY_EQUAL:  "+",   # tecla = / + en teclado normal
+    # Comunes y puntuación
+    ecodes.KEY_SPACE:       "space",
+    ecodes.KEY_ENTER:       "enter",
+    ecodes.KEY_ESC:         "escape",
+    ecodes.KEY_TAB:         "tab",
+    ecodes.KEY_EQUAL:       "+",
+    ecodes.KEY_SEMICOLON:   "semicolon",
+    ecodes.KEY_APOSTROPHE:  "apostrophe",
+    ecodes.KEY_GRAVE:       "grave",
+    ecodes.KEY_COMMA:       "comma",
+    ecodes.KEY_DOT:         "period",
+    ecodes.KEY_SLASH:       "slash",
+    ecodes.KEY_BACKSLASH:   "backslash",
+    ecodes.KEY_MINUS:       "-",
+    ecodes.KEY_LEFTBRACE:   "[",
+    ecodes.KEY_RIGHTBRACE:  "]",
 }
 
 # También guardamos letras/numeros por su char

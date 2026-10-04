@@ -65,6 +65,9 @@ def import_local_file(file_path):
         "-ar", "22050",
         "-acodec", "pcm_s16le",
         "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
+        "-fflags", "+bitexact",
+        "-flags:a", "+bitexact",
+        "-map_metadata", "-1",
         temp_wav
     ]
     subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
