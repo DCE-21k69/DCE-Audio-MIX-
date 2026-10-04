@@ -170,7 +170,7 @@ def main(page: ft.Page):
             ft.Row([search_input, ft.Button("Buscar", icon=ft.Icons.SEARCH, on_click=lambda e: page.run_task(perform_search, e))]),
             ft.Row([loading_ring, status_text]),
             results_list
-        ], expand=True, padding=10)
+        ], expand=True)
     )
 
     # --- PESTAÑA 2: PLAYLIST ---
@@ -233,7 +233,7 @@ def main(page: ft.Page):
             ]),
             ft.Divider(color="#222222"),
             playlist_list
-        ], expand=True, padding=10)
+        ], expand=True)
     )
 
     # --- ENSAMBLE PRINCIPAL ---
