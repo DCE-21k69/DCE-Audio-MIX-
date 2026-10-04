@@ -300,6 +300,53 @@ def main(page: ft.Page):
         page.update()
 
 
+
+    FLET_TO_L4D2 = {
+        "Arrow Left": "leftarrow",
+        "Arrow Right": "rightarrow",
+        "Arrow Up": "uparrow",
+        "Arrow Down": "downarrow",
+        " ": "space",
+        "Enter": "enter",
+        "Escape": "escape",
+        "Numpad Add": "kp_plus",
+        "Numpad Subtract": "kp_minus",
+        "+": "+",
+        "-": "-",
+        "Tab": "tab",
+        "Shift Left": "shift",
+        "Shift Right": "shift",
+        "Control Left": "ctrl",
+        "Control Right": "ctrl",
+        "Alt Left": "alt",
+        "Alt Right": "alt",
+    }
+
+    def flet_key_to_l4d2(flet_key: str):
+        if flet_key in FLET_TO_L4D2:
+            return FLET_TO_L4D2[flet_key]
+        return flet_key.lower()
+
+    recording_state = {"active": None}
+
+    def on_keyboard(e: ft.KeyboardEvent):
+        if not recording_state["active"]: return
+        
+        target = recording_state["active"]
+        l4d2_key = flet_key_to_l4d2(e.key)
+        
+        if target == "pause":
+            hotkey_pause_btn.text = l4d2_key
+        elif target == "prev":
+            hotkey_prev_btn.text = l4d2_key
+        elif target == "next":
+            hotkey_next_btn.text = l4d2_key
+            
+        recording_state["active"] = None
+        page.update()
+        
+    page.on_keyboard_event = on_keyboard
+
     L4D2_TO_PYNPUT = {
         "leftarrow": "<left>",
         "rightarrow": "<right>",
@@ -325,10 +372,9 @@ def main(page: ft.Page):
             return f"<{k}>"
         return k
 
-    def set_hotkey_pause(e):
-        key = hotkey_pause.value
-        if not key: return
-        key = key.strip()
+    def set_hotkey_pause(e=None):
+        key = hotkey_pause_btn.text
+        if key == "Clic para asignar...": return
         bound = l4d2.get_bound_keys()
         if key.lower() in bound:
             page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} en uso: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
@@ -337,23 +383,63 @@ def main(page: ft.Page):
         page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Pausa L4D2 asignada a {key} (Usa 'exec dce_audio.cfg')"), bgcolor=ft.Colors.GREEN_800)
         page.snack_bar.open = True; page.update()
 
-    hotkey_pause = ft.TextField(label="Tecla Pausar/Play", hint_text="Ej: F8", width=180, on_submit=set_hotkey_pause)
-    hotkey_next = ft.TextField(label="Tecla Siguiente", hint_text="Ej: F9", width=180, on_submit=set_hotkey_next)
-    hotkey_prev = ft.TextField(label="Tecla Anterior", hint_text="Ej: F10", width=180, on_submit=set_hotkey_prev)
-    
+    def set_hotkey_next(e=None):
+        key = hotkey_next_btn.text
+        if key == "Clic para asignar...": return
+        bound = l4d2.get_bound_keys()
+        if key.lower() in bound:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
+            page.snack_bar.open = True
+            hotkey_next_btn.text = "Clic para asignar..."
+            page.update()
+            return
+        hotkey_manager.set_hotkey(format_pynput_key(key), play_next_song)
+        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
+        page.snack_bar.open = True
+        page.update()
 
+    def set_hotkey_prev(e=None):
+        key = hotkey_prev_btn.text
+        if key == "Clic para asignar...": return
+        bound = l4d2.get_bound_keys()
+        if key.lower() in bound:
+            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
+            page.snack_bar.open = True
+            hotkey_prev_btn.text = "Clic para asignar..."
+            page.update()
+            return
+        hotkey_manager.set_hotkey(format_pynput_key(key), play_prev_song)
+        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
+        page.snack_bar.open = True
+        page.update()
+
+    def start_record(target):
+        recording_state["active"] = target
+        if target == "pause": hotkey_pause_btn.text = "Presiona una tecla..."
+        if target == "prev": hotkey_prev_btn.text = "Presiona una tecla..."
+        if target == "next": hotkey_next_btn.text = "Presiona una tecla..."
+        page.update()
+
+    hotkey_pause_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("pause"))
+    hotkey_next_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("next"))
+    hotkey_prev_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("prev"))
+    
     def aplicar_hotkeys(e):
-        if hotkey_pause.value: set_hotkey_pause(e)
-        if hotkey_prev.value: set_hotkey_prev(e)
-        if hotkey_next.value: set_hotkey_next(e)
+        if hotkey_pause_btn.text != "Clic para asignar...": set_hotkey_pause()
+        if hotkey_prev_btn.text != "Clic para asignar...": set_hotkey_prev()
+        if hotkey_next_btn.text != "Clic para asignar...": set_hotkey_next()
 
     btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400)
-
+    
     ninja_panel = ft.Container(
         content=ft.Column([
-            ft.Text("🥷 Modo Ninja (Escribe la tecla y presiona Enter)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
-            ft.Text("Cambia de canción sin minimizar el juego. Verifica que la tecla no esté usada en tu CFG.", size=12, color=ft.Colors.WHITE_54),
-            ft.Row([hotkey_pause, hotkey_prev, hotkey_next]),
+            ft.Text("🥷 Modo Ninja (Captura automática de teclado)", size=16, weight=ft.FontWeight.BOLD, color="#ffaa00"),
+            ft.Text("Haz clic en los botones y presiona la tecla que desees asignar.", size=12, color=ft.Colors.WHITE_54),
+            ft.Row([
+                ft.Column([ft.Text("Pausa/Play", color=ft.Colors.WHITE_54), hotkey_pause_btn]),
+                ft.Column([ft.Text("Anterior", color=ft.Colors.WHITE_54), hotkey_prev_btn]),
+                ft.Column([ft.Text("Siguiente", color=ft.Colors.WHITE_54), hotkey_next_btn]),
+            ]),
             ft.Row([btn_aplicar_hotkeys], alignment=ft.MainAxisAlignment.END)
         ]),
         bgcolor="#121212", padding=10, border_radius=8, border=ft.Border.all(1, "#333333")
