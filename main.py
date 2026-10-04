@@ -351,6 +351,7 @@ def main(page: ft.Page):
             lbl_next.update()
 
         recording_state["active"] = None
+        set_aplicar_btn_state(True)
 
         page.update()
         
@@ -474,9 +475,19 @@ def main(page: ft.Page):
         btn.disabled = True
         btn.update()
         lbl.update()
+    
+    def set_aplicar_btn_state(has_pending: bool):
+        if has_pending:
+            btn_aplicar_hotkeys.color = ft.Colors.GREEN_400
+            btn_aplicar_hotkeys.bgcolor = "#1a2e1a"
+        else:
+            btn_aplicar_hotkeys.color = ft.Colors.WHITE_38
+            btn_aplicar_hotkeys.bgcolor = "#1a1a1a"
+        btn_aplicar_hotkeys.update()
 
     def aplicar_hotkeys(e):
         applied = False
+        set_aplicar_btn_state(False)
         if lbl_pause.value not in ("Clic para asignar...",) and "Presiona" not in lbl_pause.value and lbl_pause.color != ft.Colors.WHITE_38:
             if set_hotkey_pause() is not False:
                 mark_applied(lbl_pause, btn_pause_rec)
@@ -490,7 +501,7 @@ def main(page: ft.Page):
                 mark_applied(lbl_next, btn_next_rec)
                 applied = True
 
-    btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400)
+    btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400, bgcolor="#1a2e1a")
 
     ninja_panel = ft.Container(
         content=ft.Column([
