@@ -470,10 +470,8 @@ def main(page: ft.Page):
     btn_prev_rec = ft.OutlinedButton(content=ft.Text("⏮ Anterior"), on_click=lambda e: start_record(e, "prev"))
     btn_next_rec = ft.OutlinedButton(content=ft.Text("⏭ Siguiente"), on_click=lambda e: start_record(e, "next"))
 
-    def mark_applied(lbl, btn):
+    def mark_applied(lbl):
         lbl.color = ft.Colors.WHITE_38
-        btn.disabled = True
-        btn.update()
         lbl.update()
     
     def set_aplicar_btn_state(has_pending: bool):
@@ -490,15 +488,15 @@ def main(page: ft.Page):
         set_aplicar_btn_state(False)
         if lbl_pause.value not in ("Clic para asignar...",) and "Presiona" not in lbl_pause.value and lbl_pause.color != ft.Colors.WHITE_38:
             if set_hotkey_pause() is not False:
-                mark_applied(lbl_pause, btn_pause_rec)
+                mark_applied(lbl_pause)
                 applied = True
         if lbl_prev.value not in ("Clic para asignar...",) and "Presiona" not in lbl_prev.value and lbl_prev.color != ft.Colors.WHITE_38:
             if set_hotkey_prev() is not False:
-                mark_applied(lbl_prev, btn_prev_rec)
+                mark_applied(lbl_prev)
                 applied = True
         if lbl_next.value not in ("Clic para asignar...",) and "Presiona" not in lbl_next.value and lbl_next.color != ft.Colors.WHITE_38:
             if set_hotkey_next() is not False:
-                mark_applied(lbl_next, btn_next_rec)
+                mark_applied(lbl_next)
                 applied = True
 
     btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400, bgcolor="#1a2e1a")
