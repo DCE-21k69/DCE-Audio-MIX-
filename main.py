@@ -337,12 +337,16 @@ def main(page: ft.Page):
         
         if target == "pause":
             hotkey_pause_btn.text = l4d2_key
+            hotkey_pause_btn.update()
         elif target == "prev":
             hotkey_prev_btn.text = l4d2_key
+            hotkey_prev_btn.update()
         elif target == "next":
             hotkey_next_btn.text = l4d2_key
+            hotkey_next_btn.update()
             
         recording_state["active"] = None
+
         page.update()
         
     page.on_keyboard_event = on_keyboard
@@ -413,16 +417,22 @@ def main(page: ft.Page):
         page.snack_bar.open = True
         page.update()
 
-    def start_record(target):
+    def start_record(e, target):
         recording_state["active"] = target
-        if target == "pause": hotkey_pause_btn.text = "Presiona una tecla..."
-        if target == "prev": hotkey_prev_btn.text = "Presiona una tecla..."
-        if target == "next": hotkey_next_btn.text = "Presiona una tecla..."
-        page.update()
+        if target == "pause": 
+            hotkey_pause_btn.text = "Presiona una tecla..."
+            hotkey_pause_btn.update()
+        if target == "prev": 
+            hotkey_prev_btn.text = "Presiona una tecla..."
+            hotkey_prev_btn.update()
+        if target == "next": 
+            hotkey_next_btn.text = "Presiona una tecla..."
+            hotkey_next_btn.update()
 
-    hotkey_pause_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("pause"))
-    hotkey_next_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("next"))
-    hotkey_prev_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda _: start_record("prev"))
+
+    hotkey_pause_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda e: start_record(e, "pause"))
+    hotkey_next_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda e: start_record(e, "next"))
+    hotkey_prev_btn = ft.OutlinedButton("Clic para asignar...", width=140, on_click=lambda e: start_record(e, "prev"))
     
     def aplicar_hotkeys(e):
         if hotkey_pause_btn.text != "Clic para asignar...": set_hotkey_pause()
