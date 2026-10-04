@@ -69,16 +69,25 @@ echo "DCE Audio Mix cargado con exito. Presiona {hotkey} para reproducir."
     def set_voice_input(self, source_wav_path):
         if not self.game_path:
             return False, "Juego no encontrado."
-        target_wav = os.path.join(self.game_path, "left4dead2", "voice_input.wav")
+        target_wav1 = os.path.join(self.game_path, "left4dead2", "voice_input.wav")
+        target_wav2 = os.path.join(self.game_path, "voice_input.wav")
         try:
-            shutil.copy2(source_wav_path, target_wav)
+            shutil.copy2(source_wav_path, target_wav1)
+            try:
+                shutil.copy2(source_wav_path, target_wav2)
+            except Exception:
+                pass
             
             # Ocultar en Windows
             if platform.system() == "Windows":
                 import ctypes
-                ctypes.windll.kernel32.SetFileAttributesW(target_wav, 2)
+                try:
+                    ctypes.windll.kernel32.SetFileAttributesW(target_wav1, 2)
+                    ctypes.windll.kernel32.SetFileAttributesW(target_wav2, 2)
+                except Exception:
+                    pass
                 
-            return True, "Audio inyectado en L4D2."
+            return True, "Audio inyectado en L4D2 con éxito."
         except Exception as e:
             return False, f"Error inyectando audio: {e}"
 

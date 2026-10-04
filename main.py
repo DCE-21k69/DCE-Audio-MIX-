@@ -1,11 +1,30 @@
 import flet as ft
 import os
+import json
 import asyncio
 import webbrowser
 from core.dce_audio_core import search_youtube, download_and_convert
 from core.l4d2_manager import L4D2Manager
 from core.hotkeys import hotkey_manager
 from core.playlist_manager import get_playlist, add_to_playlist, remove_from_playlist, import_local_file
+
+CONFIG_FILE = os.path.abspath("hotkeys_config.json")
+
+def load_hotkeys_config():
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            pass
+    return {"pause": "x", "prev": "", "next": ""}
+
+def save_hotkeys_config(pause, prev, next_k):
+    try:
+        with open(CONFIG_FILE, "w", encoding="utf-8") as f:
+            json.dump({"pause": pause, "prev": prev, "next": next_k}, f, indent=2)
+    except Exception as e:
+        print(f"Error guardando hotkeys: {e}")
 
 def main(page: ft.Page):
     page.title = "DCE Audio Mix"
@@ -20,6 +39,17 @@ def main(page: ft.Page):
         page.window.icon = icon_path
 
     l4d2 = L4D2Manager()
+
+    # --- HELPER NOTIFICACIONES (SNACKBAR FLET 1.0) ---
+    def show_notify(msg, is_error=False, is_warning=False):
+        color = ft.Colors.RED_800 if is_error else (ft.Colors.ORANGE_800 if is_warning else ft.Colors.GREEN_800)
+        page.show_dialog(
+            ft.SnackBar(
+                content=ft.Text(str(msg), color=ft.Colors.WHITE, weight=ft.FontWeight.W_500),
+                bgcolor=color,
+                open=True
+            )
+        )
 
     # --- TOP BAR (STATUS L4D2) ---
     l4d2_status_icon = ft.Icon(ft.Icons.CIRCLE, color=ft.Colors.RED_500, size=16)
@@ -43,18 +73,18 @@ def main(page: ft.Page):
         page.update()
 
     def do_connect_l4d2(e):
-        success, msg = l4d2.generate_cfg()
-        page.snack_bar = ft.SnackBar(ft.Text(msg), bgcolor=ft.Colors.GREEN_800 if success else ft.Colors.RED_800)
-        page.snack_bar.open = True
+        cfg = load_hotkeys_config()
+        pause_key = cfg.get("pause") or "x"
+        success, msg = l4d2.generate_cfg(pause_key)
+        show_notify(msg, is_error=not success)
         check_l4d2_status()
 
     btn_connect = ft.Button("Conectar", icon=ft.Icons.CABLE, on_click=do_connect_l4d2, color="#ffaa00")
 
-
     # Botones de ventana
-
     async def do_close(*args):
-        hotkey_manager.stop(); await page.window.close()
+        hotkey_manager.stop()
+        await page.window.close()
         
     async def do_minimize(*args):
         page.window.minimized = True
@@ -123,8 +153,10 @@ def main(page: ft.Page):
             await asyncio.to_thread(download_and_convert, url, out_wav)
             success, msg = l4d2.set_voice_input(out_wav)
             status_text.value = f"✅ {msg}"
+            show_notify(f"✅ Inyectado en L4D2: {title}")
         except Exception as err:
             status_text.value = f"❌ Error: {err}"
+            show_notify(f"❌ Error al inyectar: {err}", is_error=True)
         loading_ring.visible = False
         page.update()
 
@@ -138,9 +170,11 @@ def main(page: ft.Page):
             await asyncio.to_thread(download_and_convert, url, out_wav)
             await asyncio.to_thread(add_to_playlist, title, duration, out_wav, thumbnail, False)
             status_text.value = f"✅ Añadido a Playlist local!"
+            show_notify(f"✅ Guardado en Playlist: {title}")
             load_playlist_view()
         except Exception as err:
             status_text.value = f"❌ Error: {err}"
+            show_notify(f"❌ Error al guardar: {err}", is_error=True)
         loading_ring.visible = False
         page.update()
 
@@ -192,8 +226,52 @@ def main(page: ft.Page):
 
     # --- PESTAÑA 2: PLAYLIST ---
     playlist_list = ft.ListView(expand=True, spacing=10)
-    current_song_index = [0] # List to act as mutable reference
+    current_song_index = [0]
     
+    def play_next_song():
+        data = get_playlist()
+        if not data: return
+        current_song_index[0] = (current_song_index[0] + 1) % len(data)
+        song = data[current_song_index[0]]
+        l4d2.set_voice_input(song['file'])
+        print(f"Modo Ninja: Siguiente -> {song['title']}")
+
+    def play_prev_song():
+        data = get_playlist()
+        if not data: return
+        current_song_index[0] = (current_song_index[0] - 1) % len(data)
+        song = data[current_song_index[0]]
+        l4d2.set_voice_input(song['file'])
+        print(f"Modo Ninja: Anterior -> {song['title']}")
+
+    def inject_playlist_song(song):
+        data = get_playlist()
+        for i, s in enumerate(data):
+            if s['id'] == song['id']:
+                current_song_index[0] = i
+                break
+        success, msg = l4d2.set_voice_input(song['file'])
+        show_notify(f"✅ Inyectado en L4D2: {song['title']}" if success else f"❌ Error: {msg}", is_error=not success)
+        page.update()
+
+    def delete_playlist_song(song_id):
+        remove_from_playlist(song_id)
+        load_playlist_view()
+
+    def on_file_picked(e: ft.FilePickerResultEvent):
+        if e.files:
+            for f in e.files:
+                show_notify(f"Procesando {f.name}...")
+                import_local_file(f.path)
+            load_playlist_view()
+
+    file_picker = ft.FilePicker(on_result=on_file_picked)
+
+    async def open_file_picker(e):
+        await file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"])
+
+    page.services.append(file_picker)
+
     def load_playlist_view():
         playlist_list.controls.clear()
         data = get_playlist()
@@ -220,88 +298,17 @@ def main(page: ft.Page):
             playlist_list.controls.append(card)
         page.update()
 
+    # --- MODO NINJA Y HOTKEYS ---
+    saved_cfg = load_hotkeys_config()
+    saved_pause = saved_cfg.get("pause") or "x"
+    saved_prev = saved_cfg.get("prev") or ""
+    saved_next = saved_cfg.get("next") or ""
 
-    def play_next_song():
-        data = get_playlist()
-        if not data: return
-        current_song_index[0] = (current_song_index[0] + 1) % len(data)
-        song = data[current_song_index[0]]
-        l4d2.set_voice_input(song['file'])
-        print(f"Modo Ninja: Siguiente -> {song['title']}")
-
-    def play_prev_song():
-        data = get_playlist()
-        if not data: return
-        current_song_index[0] = (current_song_index[0] - 1) % len(data)
-        song = data[current_song_index[0]]
-        l4d2.set_voice_input(song['file'])
-        print(f"Modo Ninja: Anterior -> {song['title']}")
-
-    def inject_playlist_song(song):
-        data = get_playlist()
-        for i, s in enumerate(data):
-            if s['id'] == song['id']:
-                current_song_index[0] = i
-                break
-        success, msg = l4d2.set_voice_input(song['file'])
-        page.snack_bar = ft.SnackBar(ft.Text(msg), bgcolor=ft.Colors.GREEN_800 if success else ft.Colors.RED_800)
-        page.snack_bar.open = True
-        page.update()
-
-    def delete_playlist_song(song_id):
-        remove_from_playlist(song_id)
-        load_playlist_view()
-
-    def on_file_picked(e: ft.FilePickerResultEvent):
-        if e.files:
-            for f in e.files:
-                page.snack_bar = ft.SnackBar(ft.Text(f"Procesando {f.name}..."))
-                page.snack_bar.open = True; page.update()
-                import_local_file(f.path)
-            load_playlist_view()
-
-    file_picker = ft.FilePicker(on_result=on_file_picked)
-
-    async def open_file_picker(e):
-        await file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"])
-
-    page.services.append(file_picker)
-
-
-    # --- MODO NINJA ---
-    def set_hotkey_next(e):
-        key = hotkey_next.value.strip()
-        if not key: return
-        bound = l4d2.get_bound_keys()
-        if key.lower() in bound:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True
-            hotkey_next.value = None
-            page.update()
-            return
-        hotkey_manager.set_hotkey(key, play_next_song)
-        # success
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
-        page.snack_bar.open = True
-        page.update()
-
-    def set_hotkey_prev(e):
-        key = hotkey_prev.value.strip()
-        if not key: return
-        bound = l4d2.get_bound_keys()
-        if key.lower() in bound:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True
-            hotkey_prev.value = None
-            page.update()
-            return
-        hotkey_manager.set_hotkey(key, play_prev_song)
-        # success
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
-        page.snack_bar.open = True
-        page.update()
-
-
+    # Pre-registrar hotkeys guardadas al iniciar
+    if saved_prev:
+        hotkey_manager.set_hotkey(saved_prev, play_prev_song)
+    if saved_next:
+        hotkey_manager.set_hotkey(saved_next, play_next_song)
 
     FLET_TO_L4D2 = {
         "Arrow Left": "leftarrow",
@@ -331,148 +338,10 @@ def main(page: ft.Page):
 
     recording_state = {"active": None}
 
-    def on_keyboard(e: ft.KeyboardEvent):
-        if not recording_state["active"]: return
-        
-        target = recording_state["active"]
-        l4d2_key = flet_key_to_l4d2(e.key)
-        
-        def update_label(lbl, prev_key):
-            same = (lbl.color == ft.Colors.WHITE_38 and lbl.value == l4d2_key)
-            lbl.value = l4d2_key
-            lbl.color = ft.Colors.WHITE_38 if same else ft.Colors.GREEN_400
-            lbl.update()
-            return same
-
-        if target == "pause":
-            already = update_label(lbl_pause, lbl_pause.value)
-        elif target == "prev":
-            already = update_label(lbl_prev, lbl_prev.value)
-        elif target == "next":
-            already = update_label(lbl_next, lbl_next.value)
-        else:
-            already = False
-
-        recording_state["active"] = None
-        if not already:
-            set_aplicar_btn_state(True)
-
-        page.update()
-        
-    page.on_keyboard_event = on_keyboard
-
-    L4D2_TO_PYNPUT = {
-        "leftarrow": "<left>",
-        "rightarrow": "<right>",
-        "uparrow": "<up>",
-        "downarrow": "<down>",
-        "kp_plus": "+",
-        "kp_minus": "-",
-        "kp_enter": "<enter>",
-        "space": "<space>",
-        "escape": "<esc>",
-        "enter": "<enter>",
-        "shift": "<shift>",
-        "ctrl": "<ctrl>",
-        "alt": "<alt>",
-        "tab": "<tab>",
-    }
-
-    def format_pynput_key(l4d2_key):
-        k = l4d2_key.lower()
-        if k in L4D2_TO_PYNPUT:
-            return L4D2_TO_PYNPUT[k]
-        if len(k) > 1 and k.startswith("f") and k[1:].isdigit():
-            return f"<{k}>"
-        return k
-
-    def set_hotkey_pause(e=None):  # returns False if validation fails
-        key = lbl_pause.value
-        if not key or "Presiona" in key or "Clic" in key: return
-        if key == lbl_next.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        if key == lbl_prev.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        bound = l4d2.get_bound_keys()
-        if key.lower() in bound:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} en uso: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True; page.update(); return False
-        success, msg = l4d2.generate_cfg(key)
-        # success
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Pausa L4D2 asignada a {key} (Usa 'exec dce_audio.cfg')"), bgcolor=ft.Colors.GREEN_800)
-        page.snack_bar.open = True; page.update()
-
-    def set_hotkey_next(e=None):  # returns False if validation fails
-        key = lbl_next.value
-        if not key or "Presiona" in key or "Clic" in key: return
-        # Check duplicate across our own hotkeys
-        if key == lbl_prev.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Anterior!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        if key == lbl_pause.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        bound = l4d2.get_bound_keys()
-        if key.lower() in bound:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True
-            hotkey_next_btn.text = "Clic para asignar..."
-            page.update()
-            return
-        hotkey_manager.set_hotkey(key, play_next_song)
-        # success
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Siguiente asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
-        page.snack_bar.open = True
-        page.update()
-
-    def set_hotkey_prev(e=None):  # returns False if validation fails
-        key = lbl_prev.value
-        if not key or "Presiona" in key or "Clic" in key: return
-        if key == lbl_next.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Siguiente!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        if key == lbl_pause.value:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ {key} ya está asignada a Pausa!"), bgcolor=ft.Colors.ORANGE_800)
-            page.snack_bar.open = True; page.update(); return False
-        bound = l4d2.get_bound_keys()
-        if key.lower() in bound:
-            page.snack_bar = ft.SnackBar(ft.Text(f"⚠️ Tecla {key} ya está en uso en L4D2: {bound[key.lower()][0]}"), bgcolor=ft.Colors.RED_800)
-            page.snack_bar.open = True
-            hotkey_prev_btn.text = "Clic para asignar..."
-            page.update()
-            return
-        hotkey_manager.set_hotkey(key, play_prev_song)
-        # success
-        page.snack_bar = ft.SnackBar(ft.Text(f"✅ Tecla Anterior asignada a {key}"), bgcolor=ft.Colors.GREEN_800)
-        page.snack_bar.open = True
-        page.update()
-
-    # Texts references for real-time update
-    lbl_pause = ft.Text("Clic para asignar...", color=ft.Colors.WHITE_54, size=13)
-    lbl_prev = ft.Text("Clic para asignar...", color=ft.Colors.WHITE_54, size=13)
-    lbl_next = ft.Text("Clic para asignar...", color=ft.Colors.WHITE_54, size=13)
-
-    def start_record(e, target):
-        recording_state["active"] = target
-        if target == "pause":
-            lbl_pause.value = "⌨️ Presiona una tecla..."
-            lbl_pause.color = "#ffaa00"
-            lbl_pause.update()
-        if target == "prev":
-            lbl_prev.value = "⌨️ Presiona una tecla..."
-            lbl_prev.color = "#ffaa00"
-            lbl_prev.update()
-        if target == "next":
-            lbl_next.value = "⌨️ Presiona una tecla..."
-            lbl_next.color = "#ffaa00"
-            lbl_next.update()
-
-    # Buttons just trigger recording mode
-    btn_pause_rec = ft.OutlinedButton(content=ft.Text("🎵 Pausa/Play"), on_click=lambda e: start_record(e, "pause"))
-    btn_prev_rec = ft.OutlinedButton(content=ft.Text("⏮ Anterior"), on_click=lambda e: start_record(e, "prev"))
-    btn_next_rec = ft.OutlinedButton(content=ft.Text("⏭ Siguiente"), on_click=lambda e: start_record(e, "next"))
+    # Labels de estado de teclas
+    lbl_pause = ft.Text(saved_pause, color=ft.Colors.WHITE_38, size=13)
+    lbl_prev = ft.Text(saved_prev if saved_prev else "Clic para asignar...", color=ft.Colors.WHITE_38 if saved_prev else ft.Colors.WHITE_54, size=13)
+    lbl_next = ft.Text(saved_next if saved_next else "Clic para asignar...", color=ft.Colors.WHITE_38 if saved_next else ft.Colors.WHITE_54, size=13)
 
     def mark_applied(lbl):
         lbl.color = ft.Colors.WHITE_38
@@ -487,54 +356,125 @@ def main(page: ft.Page):
             btn_aplicar_hotkeys.bgcolor = "#1a1a1a"
         btn_aplicar_hotkeys.update()
 
-    def aplicar_hotkeys(e):
-        applied = False
-        set_aplicar_btn_state(False)
-        if lbl_pause.value not in ("Clic para asignar...",) and "Presiona" not in lbl_pause.value and lbl_pause.color != ft.Colors.WHITE_38:
-            if set_hotkey_pause() is not False:
-                mark_applied(lbl_pause)
-                applied = True
-        if lbl_prev.value not in ("Clic para asignar...",) and "Presiona" not in lbl_prev.value and lbl_prev.color != ft.Colors.WHITE_38:
-            if set_hotkey_prev() is not False:
-                mark_applied(lbl_prev)
-                applied = True
-        if lbl_next.value not in ("Clic para asignar...",) and "Presiona" not in lbl_next.value and lbl_next.color != ft.Colors.WHITE_38:
-            if set_hotkey_next() is not False:
-                mark_applied(lbl_next)
-                applied = True
+    def on_keyboard(e: ft.KeyboardEvent):
+        if not recording_state["active"]: return
+        
+        target = recording_state["active"]
+        l4d2_key = flet_key_to_l4d2(e.key)
+        
+        def update_label(lbl):
+            same = (lbl.color == ft.Colors.WHITE_38 and lbl.value == l4d2_key)
+            lbl.value = l4d2_key
+            lbl.color = ft.Colors.WHITE_38 if same else ft.Colors.GREEN_400
+            lbl.update()
+            return same
 
-    btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.GREEN_400, bgcolor="#1a2e1a")
+        if target == "pause":
+            already = update_label(lbl_pause)
+        elif target == "prev":
+            already = update_label(lbl_prev)
+        elif target == "next":
+            already = update_label(lbl_next)
+        else:
+            already = False
+
+        recording_state["active"] = None
+        if not already:
+            set_aplicar_btn_state(True)
+        page.update()
+        
+    page.on_keyboard_event = on_keyboard
+
+    def start_record(e, target):
+        recording_state["active"] = target
+        if target == "pause": 
+            lbl_pause.value = "⌨️ Presiona una tecla..."
+            lbl_pause.color = "#ffaa00"
+            lbl_pause.update()
+        if target == "prev": 
+            lbl_prev.value = "⌨️ Presiona una tecla..."
+            lbl_prev.color = "#ffaa00"
+            lbl_prev.update()
+        if target == "next": 
+            lbl_next.value = "⌨️ Presiona una tecla..."
+            lbl_next.color = "#ffaa00"
+            lbl_next.update()
+
+    btn_pause_rec = ft.OutlinedButton(content=ft.Text("🎵 Pausa/Play"), on_click=lambda e: start_record(e, "pause"))
+    btn_prev_rec = ft.OutlinedButton(content=ft.Text("⏮ Anterior"), on_click=lambda e: start_record(e, "prev"))
+    btn_next_rec = ft.OutlinedButton(content=ft.Text("⏭ Siguiente"), on_click=lambda e: start_record(e, "next"))
+
+    def aplicar_hotkeys(e):
+        pause_k = lbl_pause.value.strip()
+        prev_k = lbl_prev.value.strip()
+        next_k = lbl_next.value.strip()
+
+        if "Presiona" in pause_k or "Presiona" in prev_k or "Presiona" in next_k:
+            show_notify("Presiona una tecla en el teclado primero.", is_warning=True)
+            return
+
+        pause_val = pause_k if pause_k != "Clic para asignar..." else "x"
+        prev_val = prev_k if prev_k != "Clic para asignar..." else ""
+        next_val = next_k if next_k != "Clic para asignar..." else ""
+
+        # Verificar duplicados entre nuestras propias teclas
+        chosen = [k for k in [pause_val, prev_val, next_val] if k]
+        if len(chosen) != len(set(chosen)):
+            show_notify("⚠️ No puedes usar la misma tecla para dos funciones diferentes.", is_warning=True)
+            return
+
+        # Verificar colisiones con CFGs de L4D2
+        bound = l4d2.get_bound_keys()
+        for label, val in [("Pausa/Play", pause_val), ("Anterior", prev_val), ("Siguiente", next_val)]:
+            if val and val.lower() in bound:
+                show_notify(f"⚠️ Tecla '{val}' ({label}) en uso en L4D2: {bound[val.lower()][0]}", is_error=True)
+                return
+
+        # Aplicar CFG en L4D2 con la tecla de pausa
+        if pause_val:
+            l4d2.generate_cfg(pause_val)
+        
+        # Registrar listeners de hotkeys
+        if prev_val:
+            hotkey_manager.set_hotkey(prev_val, play_prev_song)
+        if next_val:
+            hotkey_manager.set_hotkey(next_val, play_next_song)
+
+        # Guardar configuración en archivo persistente
+        save_hotkeys_config(pause_val, prev_val, next_val)
+
+        # Actualizar visuales
+        if pause_val: mark_applied(lbl_pause)
+        if prev_val: mark_applied(lbl_prev)
+        if next_val: mark_applied(lbl_next)
+        set_aplicar_btn_state(False)
+
+        show_notify("✅ ¡Teclas guardadas y aplicadas con éxito!")
+
+    btn_aplicar_hotkeys = ft.Button("Aplicar Teclas", icon=ft.Icons.CHECK_CIRCLE, on_click=aplicar_hotkeys, color=ft.Colors.WHITE_38, bgcolor="#1a1a1a")
 
     # --- CHECK GRUPO INPUT para evdev ---
     import grp
     def _user_in_input_group():
         try:
             members = grp.getgrnam("input").gr_mem
-            import os, pwd
+            import pwd
             username = pwd.getpwuid(os.getuid()).pw_name
             return username in members
         except Exception:
             return False
 
     def _try_add_to_input_group(e):
-        import subprocess, os, pwd
+        import subprocess, pwd
         username = pwd.getpwuid(os.getuid()).pw_name
         try:
-            # pkexec pide contraseña con diálogo gráfico del sistema
             subprocess.run(["pkexec", "usermod", "-aG", "input", username], check=True)
-            page.snack_bar = ft.SnackBar(
-                ft.Text("✅ ¡Listo! Cierra sesión y vuelve a entrar para activar los hotkeys."),
-                bgcolor=ft.Colors.GREEN_800
-            )
+            show_notify("✅ ¡Listo! Cierra sesión y vuelve a entrar para activar los hotkeys.")
             btn_fix_input.visible = False
             lbl_input_warning.visible = False
+            page.update()
         except Exception as ex:
-            page.snack_bar = ft.SnackBar(
-                ft.Text(f"❌ Error: {ex}"),
-                bgcolor=ft.Colors.RED_800
-            )
-        page.snack_bar.open = True
-        page.update()
+            show_notify(f"❌ Error: {ex}", is_error=True)
 
     _in_input = _user_in_input_group()
     btn_fix_input = ft.Button(
