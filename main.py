@@ -52,10 +52,10 @@ def main(page: ft.Page):
 
     # Botones de ventana
 
-    async def do_close(e):
+    async def do_close(*args):
         await page.window.close()
         
-    async def do_minimize(e):
+    async def do_minimize(*args):
         page.window.minimized = True
         page.update()
 
@@ -83,7 +83,7 @@ def main(page: ft.Page):
 
     # --- PESTAÑA 1: BUSCADOR ---
     search_state = {"query": "", "loaded_count": 0, "is_loading_more": False, "has_more": True, "is_direct_link": False}
-    search_input = ft.TextField(hint_text="Escribe el nombre o pega enlace de YouTube...", expand=True, bgcolor="#101010")
+    search_input = ft.TextField(hint_text="Escribe el nombre o pega enlace de YouTube...", expand=True, bgcolor="#101010", on_submit=lambda e: page.run_task(perform_search, e))
     results_list = ft.ListView(expand=True, spacing=10, padding=10)
     status_text = ft.Text("", color="#ffaa00", size=14)
     loading_ring = ft.ProgressRing(visible=False, width=20, height=20, color="#ffaa00")
