@@ -218,13 +218,17 @@ def main(page: ft.Page):
             load_playlist_view()
 
     file_picker = ft.FilePicker(on_result=on_file_picked)
-    page.overlay.append(file_picker)
+
+    async def open_file_picker(e):
+        await file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"])
+
+    page.services.append(file_picker)
 
     playlist_column = ft.Column([
         ft.Row([
             ft.Text("Canciones Guardadas", size=20, weight=ft.FontWeight.BOLD, color=ft.Colors.WHITE),
             ft.Container(expand=True),
-            ft.Button("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=lambda _: file_picker.pick_files(allow_multiple=True, allowed_extensions=["mp3", "wav", "m4a", "ogg"]))
+            ft.Button("Añadir Archivo Local", icon=ft.Icons.FOLDER_OPEN, on_click=open_file_picker)
         ]),
         ft.Divider(color="#222222"),
         playlist_list
