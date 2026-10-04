@@ -26,7 +26,17 @@ def save_hotkeys_config(pause, prev, next_k):
     except Exception as e:
         print(f"Error guardando hotkeys: {e}")
 
+def fix_linux_audio_ducking():
+    try:
+        import subprocess, shutil
+        if shutil.which("wpctl"):
+            subprocess.run(["wpctl", "settings", "bluetooth.autoswitch-to-headset-profile", "false"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.run(["wpctl", "settings", "linking.role-based.duck-level", "1.0"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception:
+        pass
+
 def main(page: ft.Page):
+    fix_linux_audio_ducking()
     page.title = "DCE Audio Mix"
     page.theme_mode = ft.ThemeMode.DARK
     page.bgcolor = "#080808"
