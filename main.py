@@ -51,8 +51,16 @@ def main(page: ft.Page):
 
 
     # Botones de ventana
-    btn_min = ft.IconButton(ft.Icons.MINIMIZE, on_click=lambda _: setattr(page.window, "minimized", True) or page.update(), icon_color=ft.Colors.WHITE_54)
-    btn_close = ft.IconButton(ft.Icons.CLOSE, on_click=lambda _: page.window.close(), icon_color=ft.Colors.RED_400)
+
+    async def do_close(e):
+        await page.window.close()
+        
+    async def do_minimize(e):
+        page.window.minimized = True
+        page.update()
+
+    btn_min = ft.IconButton(ft.Icons.MINIMIZE, on_click=lambda e: page.run_task(do_minimize), icon_color=ft.Colors.WHITE_54)
+    btn_close = ft.IconButton(ft.Icons.CLOSE, on_click=lambda e: page.run_task(do_close), icon_color=ft.Colors.RED_400)
 
     top_bar = ft.WindowDragArea(
         content=ft.Container(
@@ -271,6 +279,8 @@ def main(page: ft.Page):
     
     check_l4d2_status()
     load_playlist_view()
+    page.window.visible = True
+    page.update()
 
 if __name__ == "__main__":
-    ft.run(main)
+    ft.run(main, view=ft.AppView.FLET_APP_HIDDEN)
