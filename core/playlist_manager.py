@@ -62,7 +62,7 @@ def import_local_file(file_path):
         "ffmpeg", "-y",
         "-i", file_path,
         "-ac", "1",
-        "-ar", "22050",
+        "-ar", "11025",
         "-acodec", "pcm_s16le",
         "-af", "loudnorm=I=-16:TP=-1.5:LRA=11",
         "-fflags", "+bitexact",

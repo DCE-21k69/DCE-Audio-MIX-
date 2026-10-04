@@ -58,6 +58,12 @@ voice_scale 1
 voice_loopback 1
 voice_forcemicrecord 0
 
+// Evitar que el juego baje el volumen o apague el sonido (Anti-Ducking)
+snd_ducktovolume 1.0
+snd_duckerattacktime 0.0
+snd_duckerreleasetime 0.0
+snd_duckerthreshold 1.0
+
 alias dce_play "voice_inputfromfile 1; voice_loopback 1; +voicerecord; alias dce_toggle dce_stop"
 alias dce_stop "-voicerecord; voice_inputfromfile 0; voice_loopback 0; alias dce_toggle dce_play"
 alias dce_toggle "dce_play"
